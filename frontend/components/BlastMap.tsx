@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Core, ElementDefinition } from "cytoscape";
+import type { Core } from "cytoscape";
+import { presentGraph, spanElements } from "@/lib/blastLayout";
 import { releaseChain } from "@/lib/release";
 import type { Bundle } from "@/lib/types";
 
@@ -21,7 +22,7 @@ const STYLE = [
       "background-opacity": 1,
       "underlay-opacity": 0,
       shape: "round-rectangle",
-      "min-zoomed-font-size": 6,
+      "min-zoomed-font-size": 7,
     },
   },
   {
@@ -57,9 +58,10 @@ const STYLE = [
   {
     selector: "node.symbol",
     style: {
-      width: 112,
-      height: 26,
-      "font-size": 10,
+      width: 128,
+      height: 30,
+      "font-size": 12,
+      "text-max-width": "116px",
       "background-color": "#101820",
       "border-width": 1,
       "border-color": "#314556",
@@ -85,19 +87,24 @@ const STYLE = [
     },
   },
   { selector: "node.hover", style: { "border-width": 2, "border-color": "#5eead4", "z-index": 8 } },
-  { selector: ".dim", style: { opacity: 0.2 } },
+  { selector: "node.dim", style: { opacity: 0.22 } },
+  { selector: "edge.dim", style: { opacity: 0.04 } },
   {
     selector: "edge",
     style: {
-      width: 1.15,
+      width: 1,
+      // Taxi routing keeps parallel calls orderly instead of a tangle of curves.
       "curve-style": "bezier",
-      "control-point-step-size": 48,
+      "control-point-step-size": 36,
       "target-arrow-shape": "triangle",
-      "arrow-scale": 0.75,
-      "line-color": "rgba(94,234,212,0.55)",
+      "arrow-scale": 0.7,
+      // Faint by default: with hundreds of calls the picture is the nodes, not the wires.
+      opacity: 0.18,
+      "line-color": "rgba(94,234,212,1)",
       "target-arrow-color": "#5eead4",
     },
   },
+  { selector: "edge.chain", style: { opacity: 0.95, width: 2, "line-color": "#f472b6", "target-arrow-color": "#f472b6", "z-index": 7 } },
   { selector: "edge[kind = 'contains']", style: { display: "none" } },
   {
     selector: "edge[kind = 'imports']",
@@ -110,153 +117,12 @@ const STYLE = [
       "target-arrow-color": "rgba(244,114,182,0.75)",
     },
   },
-  { selector: "edge.hot", style: { width: 2.2, "line-color": "#5eead4", "target-arrow-color": "#5eead4", opacity: 1, "z-index": 9 } },
+  { selector: "edge.quiet", style: { display: "none" } },
+  { selector: "edge.hot", style: { display: "element", width: 2.2, "line-color": "#5eead4", "target-arrow-color": "#5eead4", opacity: 1, "z-index": 9 } },
+  { selector: "edge.chain.hot", style: { "line-color": "#f472b6", "target-arrow-color": "#f472b6" } },
 ];
 
-function shortName(label: string, kind?: string) {
-  const leaf = (label.split(/[/\\]/).pop() || label).trim();
-  const text = kind === "file" ? leaf : leaf.replace(/\.(py|js|ts|tsx|jsx|go|sql)$/i, "");
-  return text.length > 22 ? `${text.slice(0, 20)}…` : text;
-}
-
-function columnsFor(count: number) {
-  if (count <= 1) return 1;
-  if (count <= 4) return 2;
-  if (count <= 9) return 3;
-  if (count <= 20) return 4;
-  if (count <= 40) return 6;
-  return 8;
-}
-
-const VIEW_LIMIT = 140;
-
-function presentGraph(bundle: Bundle) {
-  const nodes = bundle.graph.nodes;
-  const edges = bundle.graph.edges;
-  if (nodes.length <= VIEW_LIMIT) return { nodes, edges, omitted: 0 };
-  const weight: Record<string, number> = { CRITICAL: 50, HIGH: 40, MEDIUM: 30, LOW: 10 };
-  const chain = new Set(releaseChain(bundle).map((node) => node.id));
-  const ranked = [...nodes].sort((a, b) => {
-    const score = (node: (typeof nodes)[number]) =>
-      (chain.has(node.id) ? 100 : 0) + (weight[node.severity || ""] || 0) + (node.kind === "endpoint" ? 8 : 0) + (node.kind === "file" ? 0 : 2);
-    return score(b) - score(a);
-  });
-  const keep = new Set<string>();
-  for (const node of ranked) {
-    if (keep.size >= VIEW_LIMIT) break;
-    if (chain.has(node.id) || node.severity || node.kind === "endpoint") keep.add(node.id);
-  }
-  for (const edge of edges) {
-    if (edge.kind === "contains" && keep.has(edge.target) && keep.size < VIEW_LIMIT) keep.add(edge.source);
-  }
-  for (const edge of edges) {
-    if (edge.kind !== "calls" || keep.size >= VIEW_LIMIT) continue;
-    if (keep.has(edge.source)) keep.add(edge.target);
-    if (keep.size < VIEW_LIMIT && keep.has(edge.target)) keep.add(edge.source);
-  }
-  if (keep.size < 24) {
-    for (const node of ranked) {
-      if (keep.size >= VIEW_LIMIT) break;
-      keep.add(node.id);
-    }
-  }
-  return {
-    nodes: nodes.filter((node) => keep.has(node.id)),
-    edges: edges.filter((edge) => keep.has(edge.source) && keep.has(edge.target)),
-    omitted: nodes.length - keep.size,
-  };
-}
-
-function spanElements(bundle: Bundle): ElementDefinition[] {
-  const { nodes, edges } = presentGraph(bundle);
-  const files = nodes.filter((node) => node.kind === "file");
-  const byId = new Map(nodes.map((node) => [node.id, node]));
-  const children = new Map<string, typeof nodes>();
-  for (const edge of edges) {
-    if (edge.kind !== "contains") continue;
-    const child = byId.get(edge.target);
-    if (!child || child.kind === "file") continue;
-    const list = children.get(edge.source) || [];
-    list.push(child);
-    children.set(edge.source, list);
-  }
-  const placed = new Set<string>();
-  const chipW = 112;
-  const chipH = 26;
-  const gap = 10;
-  const pad = 34;
-  const cells = files
-    .map((file) => {
-      const kids = [...(children.get(file.id) || [])].sort((a, b) => Number(Boolean(b.severity)) - Number(Boolean(a.severity)) || a.label.localeCompare(b.label));
-      const cols = Math.min(3, Math.max(1, kids.length || 1));
-      const rows = Math.max(1, Math.ceil((kids.length || 1) / cols));
-      const width = kids.length ? cols * chipW + (cols - 1) * gap + pad * 2 : 210;
-      const height = kids.length ? rows * chipH + (rows - 1) * gap + pad * 2 + 8 : 44;
-      return { file, kids, cols, width, height };
-    })
-    .sort((a, b) => b.kids.length - a.kids.length || a.file.label.localeCompare(b.file.label));
-
-  const columns = columnsFor(cells.length);
-  const positions = new Map<string, { x: number; y: number }>();
-  let cursorX = 80;
-  let cursorY = 70;
-  let rowHeight = 0;
-  let column = 0;
-  for (const cell of cells) {
-    if (column === columns) {
-      column = 0;
-      cursorX = 80;
-      cursorY += rowHeight + 72;
-      rowHeight = 0;
-    }
-    cell.kids.forEach((kid, index) => {
-      const col = index % cell.cols;
-      const row = Math.floor(index / cell.cols);
-      positions.set(kid.id, {
-        x: cursorX + pad + col * (chipW + gap) + chipW / 2,
-        y: cursorY + pad + 6 + row * (chipH + gap) + chipH / 2,
-      });
-      placed.add(kid.id);
-    });
-    positions.set(cell.file.id, {
-      x: cursorX + cell.width / 2,
-      y: cursorY + (cell.kids.length ? 18 : cell.height / 2),
-    });
-    placed.add(cell.file.id);
-    rowHeight = Math.max(rowHeight, cell.height);
-    cursorX += cell.width + 64;
-    column += 1;
-  }
-
-  const orphans = nodes.filter((node) => !placed.has(node.id));
-  orphans.forEach((node, index) => {
-    positions.set(node.id, { x: 80 + (index % 8) * 140, y: cursorY + rowHeight + 80 + Math.floor(index / 8) * 48 });
-  });
-
-  const nodeElements: ElementDefinition[] = [
-    ...cells.map((cell) => ({
-      data: { ...cell.file, short: shortName(cell.file.label, "file") },
-      classes: cell.kids.length ? "file-group" : "lone",
-      ...(cell.kids.length ? {} : { position: positions.get(cell.file.id) }),
-    })),
-    ...nodes
-      .filter((node) => node.kind !== "file")
-      .map((node) => {
-        const parent = edges.find((edge) => edge.kind === "contains" && edge.target === node.id)?.source;
-        const classes = ["symbol", node.kind === "endpoint" ? "endpoint" : "", node.is_test ? "test" : ""].filter(Boolean).join(" ");
-        return {
-          data: { ...node, short: shortName(node.label, node.kind), ...(parent && byId.has(parent) ? { parent } : {}) },
-          classes,
-          position: positions.get(node.id),
-        };
-      }),
-  ];
-  const visible = new Set(nodeElements.map((element) => String(element.data.id)));
-  const edgeElements: ElementDefinition[] = edges
-    .filter((edge) => edge.kind !== "contains" && visible.has(edge.source) && visible.has(edge.target))
-    .map((edge) => ({ data: edge }));
-  return [...nodeElements, ...edgeElements];
-}
+const DENSE_CALLS = 60;
 
 export function BlastMap({
   bundle,
@@ -273,6 +139,11 @@ export function BlastMap({
   const framed = presentGraph(bundle);
   const importsRef = useRef(showImports);
   importsRef.current = showImports;
+  // A few calls read fine as lines. Hundreds become a hairball, so start with the chain only.
+  const callCount = framed.edges.filter((edge) => edge.kind === "calls").length;
+  const [showCalls, setShowCalls] = useState(callCount <= DENSE_CALLS);
+  const callsRef = useRef(showCalls);
+  callsRef.current = showCalls;
   const chain = releaseChain(bundle);
   const counts = bundle.impact.counts || {};
   const graphKey = bundle.graph.nodes.map((node) => `${node.id}:${node.severity || ""}:${node.changed ? 1 : 0}`).join("|") + bundle.graph.edges.length;
@@ -289,7 +160,7 @@ export function BlastMap({
       try {
         cy = cytoscape({
           container: host.current,
-          elements: spanElements(bundle),
+          elements: spanElements(bundle, host.current.clientWidth / Math.max(1, host.current.clientHeight)),
           style: [{ selector: "node", style: { "font-family": font } }, ...(STYLE as never[])] as never,
           layout: { name: "preset", fit: true, padding: 36 },
           minZoom: 0.05,
@@ -306,10 +177,16 @@ export function BlastMap({
       }
       setGraphError("");
       cy.edges("[kind = 'imports']").style("display", importsRef.current ? "element" : "none");
+      // Light up the failure chain: its edges are the story, the rest is context.
+      const onChain = new Set(chain.map((step) => step.id));
+      cy.edges().forEach((edge) => {
+        if (onChain.has(edge.source().id()) && onChain.has(edge.target().id())) edge.addClass("chain");
+      });
+      cy.edges("[kind = 'calls']").not(".chain").toggleClass("quiet", !callsRef.current);
       cy.fit(undefined, 36);
-      cy.on("mouseover", "node", (event) => {
+      const focusNode = (event: { target: import("cytoscape").NodeSingular; renderedPosition: { x: number; y: number } }) => {
         const node = event.target;
-        cy.elements().addClass("dim");
+        cy.elements().removeClass("hover hot").addClass("dim");
         node.removeClass("dim").addClass("hover");
         node.neighborhood().removeClass("dim");
         node.connectedEdges().addClass("hot").removeClass("dim");
@@ -325,13 +202,35 @@ export function BlastMap({
           title: String(node.data("label") || node.id()),
           meta: [kind, file, line ? `line ${line}` : ""].filter(Boolean).join(" · "),
         });
-      });
-      cy.on("mouseout", "node", () => {
+      };
+      cy.on("mouseover", "node", focusNode);
+      // Touch has no hover, so a tap on a node gives the same focus a mouse gets.
+      cy.on("tap", "node", focusNode);
+      const clearFocus = () => {
         cy.elements().removeClass("dim hover hot");
         setTip(null);
+      };
+      cy.on("mouseout", "node", clearFocus);
+      // Touch screens never send "mouse out", so tapping empty space must also release the focus.
+      cy.on("tap", (event) => {
+        if (event.target === cy) clearFocus();
       });
+      // Keep file names readable when the whole map is zoomed out: the label grows as the
+      // map shrinks, so the overview shows which files matter and detail appears on zoom.
+      let frame = 0;
+      const scaleFileLabels = () => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          const size = Math.max(12, Math.min(34, 13 / Math.max(cy.zoom(), 0.05)));
+          cy.batch(() => cy.nodes(".file-group, .lone").style("font-size", size));
+        });
+      };
+      cy.on("zoom", scaleFileLabels);
+      scaleFileLabels();
       cy.on("pan zoom", () => setTip(null));
       cyRef.current = cy;
+      // Development-only handle so the layout can be measured in a real browser.
+      if (process.env.NODE_ENV !== "production") (window as unknown as { __cy?: Core }).__cy = cy;
     })();
     return () => {
       destroyed = true;
@@ -345,6 +244,12 @@ export function BlastMap({
     if (!cy) return;
     cy.edges("[kind = 'imports']").style("display", showImports ? "element" : "none");
   }, [showImports, graphKey]);
+
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.edges("[kind = 'calls']").not(".chain").toggleClass("quiet", !showCalls);
+  }, [showCalls, graphKey]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -374,6 +279,9 @@ export function BlastMap({
           </div>
         )}
         <div className="graph-controls">
+          <button type="button" className={showCalls ? "on" : ""} onClick={() => setShowCalls((value) => !value)}>
+            {showCalls ? "Calls on" : `Show calls (${callCount})`}
+          </button>
           <button type="button" className={showImports ? "on" : ""} onClick={() => setShowImports((value) => !value)}>
             {showImports ? "Imports on" : "Show imports"}
           </button>
