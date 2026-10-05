@@ -15,8 +15,9 @@ export const RADIAL_STYLE = [
     selector: "node.orb",
     style: {
       shape: "ellipse",
-      width: 46,
-      height: 46,
+      // Diameter is the node's degree, mapped on a square-root scale by the element builder.
+      width: "data(size)",
+      height: "data(size)",
       "background-color": "#0d111a",
       "background-opacity": 0.95,
       "border-width": 2,
@@ -39,7 +40,17 @@ export const RADIAL_STYLE = [
     },
   },
   ...severityRules,
-  { selector: "node.filenode", style: { width: 62, height: 62, "border-width": 3, "border-color": VIOLET, "background-color": "#12182a", "font-size": 12, "underlay-color": VIOLET } },
+  { selector: "node.filenode", style: { "border-width": 3, "border-color": VIOLET, "background-color": "#12182a", "font-size": 12, "underlay-color": VIOLET } },
+  { selector: "node.folder", style: { "border-style": "double", "border-width": 5, "background-color": "#101733" } },
+  // Hubs show their degree as a number inside the circle: the answer to "how connected is this?".
+  // Their name is in the hover card, and the top hubs are also listed by name in the side panel.
+  {
+    selector: "node.orb[degree >= 4]",
+    style: { label: "data(degree)", "text-valign": "center", "text-margin-y": 0, "font-size": 15, "font-weight": 800, color: "#f6f8fc", "min-zoomed-font-size": 0, "text-outline-width": 0 },
+  },
+  // Direction of leaning: callees-heavy nodes glow cyan (they fan out), caller-heavy glow pink (they are depended on).
+  { selector: "node.source", style: { "underlay-color": CYAN, "underlay-opacity": 0.28 } },
+  { selector: "node.sink", style: { "underlay-color": PINK, "underlay-opacity": 0.28 } },
   { selector: "node.endpoint", style: { "border-color": "#fbbf24", "border-style": "double", "border-width": 4 } },
   { selector: "node.test", style: { "border-style": "dashed" } },
   { selector: "node.onchain", style: { "border-color": PINK, "border-width": 3, "underlay-color": PINK, "underlay-opacity": 0.35 } },
@@ -78,6 +89,8 @@ export const RADIAL_STYLE = [
   },
   { selector: "edge.origin", style: { "line-style": "dotted", "line-color": "rgba(94,234,212,0.35)", "target-arrow-color": "rgba(94,234,212,0.6)", width: 1.4 } },
   { selector: "edge.caller", style: { "line-style": "dashed", "line-dash-pattern": [6, 5] } },
+  // Cross-links join circles that are not parent and child. Faint curves keep them in the background.
+  { selector: "edge.cross", style: { "curve-style": "unbundled-bezier", "control-point-distances": [26], "control-point-weights": [0.5], width: 1.1, "line-color": "rgba(165,180,252,0.5)", "target-arrow-color": "rgba(165,180,252,0.8)", "arrow-scale": 0.8, opacity: 0.45 } },
   { selector: "edge.chain", style: { width: 3, "line-color": PINK, "target-arrow-color": PINK, opacity: 1, "z-index": 8 } },
   // The route between chain steps may cross rings, so it curves gently and sits above the tree.
   { selector: "edge.route", style: { "curve-style": "unbundled-bezier", "control-point-distances": [-38], "control-point-weights": [0.5], width: 3.4, "z-index": 11 } },

@@ -584,10 +584,29 @@ a { color: inherit; }
     repeating-radial-gradient(circle at 50% 50%, transparent 0 118px, rgba(129, 140, 248, 0.07) 118px 119px),
     #05060b;
 }
+.hubs { list-style: none; margin: 8px 0 18px; padding: 0; display: grid; gap: 6px; }
+.hubs li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 34px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.hubs li.on { border-color: var(--cyan); background: var(--cyan-dim); }
+.hub-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.hub-file { color: var(--faint); font-size: 11px; }
+.hub-io { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.hub-degree { text-align: right; font-size: 15px; background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: var(--cyan); }
 .radial-note { position: absolute; z-index: 3; right: 16px; bottom: 16px; margin: 0; color: var(--faint); font-size: 11px; letter-spacing: 0.06em; }
 .graph-legend i.orb { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #818cf8; background: #0d111a; }
 .graph-legend i.orb.centre { border-color: #5eead4; box-shadow: 0 0 8px rgba(94, 234, 212, 0.6); }
 .graph-legend i.orb.file { border-color: #818cf8; background: #12182a; }
+.graph-legend i.orb.size { width: 16px; height: 16px; border-color: #a5b4fc; }
+.graph-legend i.orb.source { border-color: #818cf8; box-shadow: 0 0 8px rgba(94, 234, 212, 0.75); }
+.graph-legend i.orb.sink { border-color: #818cf8; box-shadow: 0 0 8px rgba(244, 114, 182, 0.75); }
 .graph-legend i.orb.risk { border-color: #fb7185; background: rgba(251, 113, 133, 0.3); }
 .graph-legend i.arrow { width: 18px; height: 0; border: 0; border-top: 2px solid #818cf8; border-radius: 0; background: transparent; position: relative; }
 .graph-legend i.arrow.chain { border-top-color: #f472b6; }

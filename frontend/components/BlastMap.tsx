@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Core } from "cytoscape";
 import { RadialMap } from "@/components/RadialMap";
 import { presentGraph, spanElements } from "@/lib/blastLayout";
+import { topByDegree } from "@/lib/degree";
 import { releaseChain } from "@/lib/release";
 import type { Bundle } from "@/lib/types";
 
@@ -148,6 +149,7 @@ export function BlastMap({
   const callsRef = useRef(showCalls);
   callsRef.current = showCalls;
   const chain = releaseChain(bundle);
+  const hubs = topByDegree(bundle, 8);
   const counts = bundle.impact.counts || {};
   const graphKey = bundle.graph.nodes.map((node) => `${node.id}:${node.severity || ""}:${node.changed ? 1 : 0}`).join("|") + bundle.graph.edges.length;
 
@@ -311,7 +313,7 @@ export function BlastMap({
         <h2>What this change touches</h2>
         <p className="muted">
           {mode === "tree"
-            ? "The release sits at the centre. Each ring is one step further along the calls, and arrows point the way a call goes. Pink marks the failure chain. Hover or tap a circle to see only its connections."
+            ? "The release sits at the centre. Each ring is one step further along the calls, and arrows point the way a call goes. A circle's size is its degree: how many calls touch it. Cyan glow means it mostly calls others, pink means it is mostly called. Pink lines are the failure chain."
             : "Each panel is a file. The symbols inside it are the functions that review touched. Cyan lines are calls. Imports stay off until you ask for them, so the map can spread out."}
         </p>
         <div className="stat-grid">
@@ -329,6 +331,23 @@ export function BlastMap({
             </div>
           ))}
         </div>
+        {hubs.length > 0 && (
+          <>
+            <p className="kicker">Most connected</p>
+            <ol className="hubs">
+              {hubs.map((row) => (
+                <li key={row.id} className={row.id === activeId ? "on" : ""}>
+                  <span className="hub-name" title={`${row.label}\n${row.file}`}>
+                    {row.label}
+                    {hubs.filter((other) => other.label === row.label).length > 1 && <small className="hub-file"> · {row.file.split("/").pop()}</small>}
+                  </span>
+                  <span className="hub-io mono" title="callers in / callees out">{row.callers}↓ {row.callees}↑</span>
+                  <b className="hub-degree mono">{row.degree}</b>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
         <p className="kicker">Failure chain</p>
         <div className="chain">
           {chain.map((node) => (

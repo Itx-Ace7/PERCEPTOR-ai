@@ -8,6 +8,9 @@ import type { Bundle } from "@/lib/types";
 
 type Tip = { x: number; y: number; title: string; meta: string };
 
+// How many top-degree circles keep a name visible when the whole tree is zoomed out.
+const HUB_LABELS = 14;
+
 /** Round, directed blast-radius tree: the release at the centre, call depth as rings. */
 export function RadialMap({ bundle, activeId }: { bundle: Bundle; activeId?: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -34,8 +37,9 @@ export function RadialMap({ bundle, activeId }: { bundle: Bundle; activeId?: str
           elements: built.elements,
           style: [{ selector: "node", style: { "font-family": font } }, ...(RADIAL_STYLE as never[])] as never,
           layout: { name: "preset", fit: true, padding: 56 },
-          minZoom: 0.15,
-          maxZoom: 2.8,
+          // Low enough that fit() can always show a very large tree whole.
+          minZoom: 0.02,
+          maxZoom: 3.2,
           wheelSensitivity: 0.16,
         });
       } catch (err) {
@@ -80,8 +84,18 @@ export function RadialMap({ bundle, activeId }: { bundle: Bundle; activeId?: str
         frame = requestAnimationFrame(() => {
           // Aim for ~13px on screen at any zoom. The cap is high enough for a phone-sized overview.
           const size = Math.max(11, Math.min(90, 13 / Math.max(cy.zoom(), 0.05)));
+          // The best-connected circles are the ones worth naming in an overview.
+          const hubIds = new Set(
+            cy.nodes(".orb").not(".filenode").sort((a, b) => b.data("degree") - a.data("degree")).slice(0, HUB_LABELS).map((n) => n.id()),
+          );
           cy.batch(() => {
             cy.nodes(".centre, .filenode, .onchain").style({ "font-size": size, "min-zoomed-font-size": 0, "text-max-width": `${Math.round(size * 8)}px` });
+            cy.nodes(".orb").not(".filenode, .onchain").forEach((node) => {
+              const degree = node.data("degree") as number;
+              if (degree >= 4) return; // already labelled with its degree number
+              const named = hubIds.has(node.id()) && degree >= 2;
+              node.style({ "min-zoomed-font-size": named ? 0 : 8, ...(named ? { "font-size": size * 0.8 } : {}) });
+            });
           });
         });
       };
@@ -123,9 +137,12 @@ export function RadialMap({ bundle, activeId }: { bundle: Bundle; activeId?: str
       </div>
       <div className="graph-legend mono">
         <span><i className="orb centre" /> release</span>
-        <span><i className="orb file" /> file</span>
+        <span><i className="orb file" /> file / folder</span>
         <span><i className="orb risk" /> finding</span>
-        <span><i className="arrow" /> calls</span>
+        <span><i className="orb size" /> bigger = more calls</span>
+        <span><i className="orb source" /> calls others</span>
+        <span><i className="orb sink" /> is called</span>
+        <span><i className="arrow" /> call</span>
         <span><i className="arrow chain" /> failure chain</span>
       </div>
       <p className="radial-note mono">{summary.shown} nodes · {summary.roots} entry points · rings = call depth</p>

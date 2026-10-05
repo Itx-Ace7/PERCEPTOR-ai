@@ -5,6 +5,7 @@ export type RadialTree = { nodes: Map<string, TreeNode>; order: string[]; maxDep
 
 const CENTER = "__release__";
 export const CENTER_ID = CENTER;
+export const GROUP_PREFIX = "group:";
 
 /**
  * Build a breadth-first tree over call edges, following their direction from the changed code
@@ -38,7 +39,8 @@ export function buildTree(
   for (const root of roots) {
     if (!known.has(root) || tree.has(root)) continue;
     const group = groupOf(root);
-    if (group && known.has(group)) {
+    // A group is either a real file node or a synthetic folder bucket ("group:...").
+    if (group && (known.has(group) || group.startsWith(GROUP_PREFIX))) {
       if (!tree.has(group)) attach(group, CENTER, 1);
       attach(root, group, 2);
     } else {
@@ -48,7 +50,7 @@ export function buildTree(
   for (let head = 0; head < queue.length; head++) {
     const current = tree.get(queue[head])!;
     // File groups only organise their symbols; calls are followed from the symbols themselves.
-    if (current.depth >= maxDepth || current.id.startsWith("file:")) continue;
+    if (current.depth >= maxDepth || current.id.startsWith("file:") || current.id.startsWith(GROUP_PREFIX)) continue;
     for (const next of out.get(current.id) || []) {
       if (tree.has(next)) continue;
       tree.set(next, { id: next, depth: current.depth + 1, parent: current.id, children: [], leaves: 0 });
