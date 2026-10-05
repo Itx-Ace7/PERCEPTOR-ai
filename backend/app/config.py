@@ -89,7 +89,12 @@ class Settings:
         self.review_skip_names = {str(item) for item in analysis.get("review_skip_names", [])}
         sandbox = self.raw.get("sandbox", {})
         # Copying arbitrary server directories is only safe when the API is bound to loopback.
-        self.allow_local_paths = bool(server.get("allow_local_paths", self.host in {"127.0.0.1", "localhost", "::1"}))
+        # PERCEPTOR_ALLOW_LOCAL_PATHS=0 refuses path uploads once the API is reachable from other devices.
+        override = os.getenv("PERCEPTOR_ALLOW_LOCAL_PATHS")
+        if override is None or not override.strip():
+            self.allow_local_paths = bool(server.get("allow_local_paths", self.host in {"127.0.0.1", "localhost", "::1"}))
+        else:
+            self.allow_local_paths = override.strip().lower() in {"1", "true", "yes", "on"}
         retention = self.raw.get("retention", {})
         self.retain_runs = max(1, int(retention.get("keep_runs", 20)))
         self.retain_cache_entries = max(0, int(retention.get("keep_cache_entries", 200)))

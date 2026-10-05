@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { createRun, fetchMeta, fetchRuns, uploadZip } from "@/lib/api";
+import { API_BASE, createRun, fetchMeta, fetchRuns, uploadZip } from "@/lib/api";
 import type { RunSummary } from "@/lib/types";
 import { Credit } from "@/components/Credit";
 import { Mark } from "@/components/Mark";
@@ -95,7 +95,13 @@ export default function HomePage() {
               </label>
             </div>
           </div>
-          {online === false && <p className="error-line" style={{ marginTop: 12 }}>The analysis API is not running on this machine. Start it on port 8787, then analyze a repository or a zip.</p>}
+          {online === false && (
+            <p className="error-line" style={{ marginTop: 12 }}>
+              {API_BASE
+                ? "The analysis API is not running on this machine. Start it on port 8787, then analyze a repository or a zip."
+                : "The analysis service is not reachable right now. Wait a moment and try again."}
+            </p>
+          )}
           {error && <p className="error-line" style={{ marginTop: 12 }}>{error}</p>}
           <div className="principles">
             <div className="principle"><b>Trace the change</b><span>Ingest, parse, and diff before any opinion is formed.</span></div>

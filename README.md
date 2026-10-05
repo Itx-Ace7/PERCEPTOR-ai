@@ -43,7 +43,9 @@ The deterministic pipeline does not need a model key. To enable the AI review no
 
 ### Live interface
 
-The [Vercel app](https://perceptor-ai-release.vercel.app) is this same interface. Analysis still runs on the API on your machine, because a run clones the repository, keeps a workspace, and streams progress for as long as the pipeline takes. Start the API with `scripts\run.ps1`, then open the live app in the same browser. It calls `http://127.0.0.1:8787`. The API already allows that origin.
+The [Vercel app](https://perceptor-ai-release.vercel.app) is this same interface, and it works from any device. The browser talks only to that site. The site forwards `/api` to the analysis service (`API_UPSTREAM`), so a visitor never needs an API on their own computer.
+
+The analysis service is still a long-running process: a run clones the repository, keeps a workspace, and can take minutes. It has to be running for the public site to start a review. Local development is unchanged: `scripts\run.ps1` serves the UI on port 3000 and the API on port 8787.
 
 ## How a run works
 

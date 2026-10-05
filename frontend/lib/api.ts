@@ -1,6 +1,14 @@
 import type { Bundle, RunSummary } from "./types";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8787";
+// Unset in production: the browser calls this site, and the server forwards /api to the analysis
+// service. A local dev server still talks to the API on this machine unless NEXT_PUBLIC_API_BASE is set.
+const configured = process.env.NEXT_PUBLIC_API_BASE;
+export const API_BASE =
+  configured !== undefined && configured !== ""
+    ? configured.replace(/\/$/, "")
+    : process.env.NODE_ENV === "production"
+      ? ""
+      : "http://127.0.0.1:8787";
 
 // Optional shared secret. NEXT_PUBLIC_* values are visible in the browser, so this guards a
 // shared deployment against casual access; it is not a substitute for per-user authentication.
