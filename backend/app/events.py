@@ -1,0 +1,13 @@
+"""Event names shared by the runner and the UI."""
+
+RUN_STARTED = "run.started"
+NODE_STARTED = "node.started"
+NODE_PROGRESS = "node.progress"
+NODE_COMPLETED = "node.completed"
+NODE_SKIPPED = "node.skipped"
+NODE_FAILED = "node.failed"
+GRAPH_UPDATED = "graph.updated"
+FINDING_CREATED = "finding.created"
+RISK_UPDATED = "risk.updated"
+RUN_COMPLETED = "run.completed"
+RUN_FAILED = "run.failed"

@@ -4,6 +4,8 @@ __pycache__/
 *.py[cod]
 .env
 data/*.db
+data/*.db-wal
+data/*.db-shm
 data/workspaces/
 data/benchmark-repos/
 logs/*.log
