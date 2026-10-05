@@ -100,5 +100,6 @@ These figures describe this fixture and this machine. They are not a general det
 - Sairam S
 - Subha Sree S
 - Shanmathi VK
+- Mitra IK
 
 Then open http://localhost:3000, paste a GitHub repository URL, or upload a zip. Set `OPENROUTER_API_KEY` in `.env` when the model node should take part.
