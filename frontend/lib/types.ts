@@ -87,6 +87,7 @@ export type Bundle = {
     file_count: number;
   };
   nodes: Record<string, StageNodeState>;
+  skipped: { path: string; reason: string; size: number }[];
   findings: Finding[];
   graph: { nodes: GraphNode[]; edges: GraphEdge[]; total_nodes?: number; truncated?: boolean };
   impact: {

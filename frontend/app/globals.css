@@ -313,6 +313,7 @@ a { color: inherit; }
   text-overflow: ellipsis;
 }
 .meta-line { color: var(--muted); font-size: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+.meta-line .skipped { color: var(--amber); cursor: help; text-decoration: underline dotted; }
 .film { display: flex; gap: 6px; justify-content: flex-end; overflow: auto; padding-bottom: 2px; }
 .pip {
   width: 28px;

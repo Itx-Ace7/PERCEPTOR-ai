@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Activity, Command, Crosshair, FileSearch, Gauge, ScrollText } from "lucide-react";
-import { API_BASE, fetchBundle, reportUrl, startVerify } from "@/lib/api";
+import { API_BASE, fetchBundle, reportUrl, startVerify, withToken } from "@/lib/api";
 import { releaseChain } from "@/lib/release";
 import type { Bundle } from "@/lib/types";
 import { Credit } from "./Credit";
@@ -52,7 +52,7 @@ export function Workspace({ runId, initialView }: { runId: string; initialView?:
       }
     };
     load();
-    const source = new EventSource(`${API_BASE}/api/runs/${runId}/events`);
+    const source = new EventSource(withToken(`${API_BASE}/api/runs/${runId}/events`));
     source.onmessage = () => {
       load();
     };
@@ -170,6 +170,14 @@ export function Workspace({ runId, initialView }: { runId: string; initialView?:
             <div className="meta-line mono">
               <span>{sha}</span>
               <span>{bundle?.repository.file_count || 0} files</span>
+              {bundle && bundle.skipped.length > 0 && (
+                <span
+                  className="skipped"
+                  title={bundle.skipped.map((item) => `${item.path} (${item.reason}, ${Math.ceil(item.size / 1024)} KB)`).join("\n")}
+                >
+                  {bundle.skipped.length} skipped
+                </span>
+              )}
               <span>{(bundle?.repository.languages || []).join(" · ") || "reading tree"}</span>
               <span>{bundle ? `${done}/${bundle.pipeline.nodes.length} stages` : "—"}</span>
               <span>{bundle?.llm.enabled ? bundle.llm.model : "model key not set"}</span>
