@@ -1,0 +1,112 @@
+# Tests, fixtures and benchmarks are not the release under review. Shared by the noisy rules below.
+x-noise-paths: &noise_paths
+  - '(?i)(^|/)(tests?|__tests__|fixtures?|examples?|mocks?|benchmarks?)/'
+  - '(?i)(^|/)(test_[^/]*|[^/]*_test|[^/]*\.test|[^/]*\.spec)\.[a-z]+$'
+
+rules:
+  - id: BUG-NULL
+    exclude_paths: *noise_paths
+    title: Lookup used without a missing-value check
+    severity: HIGH
+    category: REGRESSION
+    confidence: 0.84
+    impact: A missing record becomes an attribute or subscript error on the request path.
+    recommendation: Stop when the lookup returns nothing, before reading fields from it.
+    autofix:
+      strategy: guard_lookup
+    detect:
+      type: hook
+      name: unchecked_lookup
+      params:
+        lookup_markers: [lookup, get, find, fetch]
+
+  - id: BUG-VALIDATION
+    title: Input validation removed
+    severity: HIGH
+    category: REGRESSION
+    confidence: 0.9
+    impact: Values the previous version rejected can now continue into persistence or side effects.
+    recommendation: Restore the guard that rejects empty or non-positive amounts before any write.
+    autofix:
+      strategy: restore_validation
+    detect:
+      type: hook
+      name: validation_removed
+      params:
+        value_names: [amount, value, qty, quantity, price, total]
+
+  - id: API-BEHAVIOR
+    title: Response status changed on an endpoint
+    severity: HIGH
+    category: API
+    confidence: 0.88
+    impact: Clients and tests that branch on the previous status will take the wrong path.
+    recommendation: Restore the previous status contract or version the endpoint before shipping the new one.
+    autofix:
+      strategy: restore_status
+    detect:
+      type: hook
+      name: api_status_changed
+
+  - id: QUAL-COMPLEXITY
+    title: Changed function is hard to follow
+    severity: MEDIUM
+    category: QUALITY
+    confidence: 0.7
+    impact: High branch density makes regressions in this change easier to miss.
+    recommendation: Split the function or name the branches so the new behavior can be tested directly.
+    detect:
+      type: hook
+      name: complexity
+
+  - id: QUAL-LONG
+    title: Changed function is very long
+    severity: LOW
+    category: QUALITY
+    confidence: 0.66
+    impact: A long changed function hides the lines that actually matter for the release.
+    recommendation: Extract the changed behavior into a smaller function with its own tests.
+    detect:
+      type: hook
+      name: long_function
+
+  - id: PERF-QUERY-LOOP
+    exclude_paths: *noise_paths
+    title: Query executed inside a loop
+    severity: MEDIUM
+    category: PERFORMANCE
+    confidence: 0.87
+    impact: Latency and database load grow with the number of items, on a path this change touches.
+    recommendation: Fetch the set once, or batch the identifiers into a single query.
+    detect:
+      type: hook
+      name: query_in_loop
+      params:
+        call_names: [execute, executemany, query, raw]
+
+  - id: DEP-DOWNGRADE
+    title: Dependency version moved backwards
+    severity: MEDIUM
+    category: DEPENDENCY
+    confidence: 0.9
+    impact: The older pin can reintroduce bugs or vulnerabilities the previous version had already left behind.
+    recommendation: Keep the newer pin unless a changelog entry explains the downgrade.
+    autofix:
+      strategy: restore_dependency
+    detect:
+      type: hook
+      name: dependency_downgrade
+
+  - id: TEST-GAP
+    title: Regression test removed for a changed function
+    severity: MEDIUM
+    category: TESTING
+    confidence: 0.9
+    impact: The behavior this test locked in can change again without a failing run.
+    recommendation: Restore the deleted test or replace it with one that covers the same failure path.
+    stage: tests
+    autofix:
+      strategy: restore_tests
+    detect:
+      type: hook
+      name: test_removed

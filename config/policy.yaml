@@ -1,0 +1,70 @@
+# Explainable prototype policy. Weights are a design choice, not a validated scientific model.
+weights:
+  security: 0.30
+  regression: 0.25
+  deployment: 0.20
+  testing: 0.15
+  performance: 0.10
+
+# Shown on the decision screen. Included in the overall score only when the weight is non-zero.
+extra_dimensions:
+  quality: 0.0
+
+thresholds:
+  low_max: 25
+  medium_max: 50
+  high_max: 75
+
+# Each dimension is 100 * (1 - exp(-raw / scale)). It tracks raw points closely for small
+# changes and flattens smoothly for huge ones, so one more finding never lowers a score.
+scoring:
+  scale: 100
+  # A finding seen n times in a file counts points * (1 + growth * log2(n)).
+  occurrence_growth: 0.35
+
+severity_points:
+  CRITICAL: 40
+  HIGH: 25
+  MEDIUM: 12
+  LOW: 5
+  INFO: 2
+
+category_dimension:
+  SECURITY: security
+  REGRESSION: regression
+  API: regression
+  DEPLOYMENT: deployment
+  CONFIG: deployment
+  DEPENDENCY: deployment
+  TESTING: testing
+  PERFORMANCE: performance
+  QUALITY: quality
+
+blocker_severities:
+  - CRITICAL
+  - HIGH
+
+# Severities that block a release whatever the category (a CRITICAL quality finding still matters).
+always_blocking_severities:
+  - CRITICAL
+
+blocker_categories:
+  - SECURITY
+  - REGRESSION
+  - API
+  - DEPLOYMENT
+  - CONFIG
+  - DEPENDENCY
+  - TESTING
+
+rank:
+  CRITICAL: 5
+  HIGH: 4
+  MEDIUM: 3
+  LOW: 2
+  INFO: 1
+
+decision_labels:
+  NOT_READY: NOT READY
+  READY_WITH_WARNINGS: READY WITH WARNINGS
+  READY: READY

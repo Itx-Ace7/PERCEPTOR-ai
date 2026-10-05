@@ -1,0 +1,109 @@
+# Tests, fixtures and benchmarks are not the release under review. Shared by the noisy rules below.
+x-noise-paths: &noise_paths
+  - '(?i)(^|/)(tests?|__tests__|fixtures?|examples?|mocks?|benchmarks?)/'
+  - '(?i)(^|/)(test_[^/]*|[^/]*_test|[^/]*\.test|[^/]*\.spec)\.[a-z]+$'
+
+rules:
+  - id: SEC-SQLI
+    exclude_paths: *noise_paths
+    title: SQL built with string interpolation
+    severity: CRITICAL
+    category: SECURITY
+    confidence: 0.96
+    impact: Untrusted input can change the query and read or write rows the caller should not touch.
+    recommendation: Use a parameterized query and pass values separately from the SQL text.
+    autofix:
+      strategy: fstring_sql
+    detect:
+      type: hook
+      name: sql_injection
+      params:
+        keywords: [SELECT, INSERT, UPDATE, DELETE, DROP, ALTER]
+
+  - id: SEC-SECRET
+    title: Secret material stored in source
+    severity: CRITICAL
+    category: SECURITY
+    confidence: 0.93
+    impact: Anyone with repository access can reuse the credential outside this service.
+    recommendation: Read the secret from the environment or a secret manager and rotate the exposed value.
+    autofix:
+      strategy: secret_to_env
+    detect:
+      type: regex
+      patterns:
+        - 'sk_live_[A-Za-z0-9]{8,}'
+        - 'sk_test_[A-Za-z0-9]{8,}'
+        - 'AKIA[0-9A-Z]{16}'
+        - '(?i)(?:api_key|secret|password|private_key|access_token)\s*=\s*["''][^"'']{12,}["'']'
+      # Fixtures and obvious placeholders are not leaked credentials.
+      exclude_paths:
+        - '(?i)(^|/)(tests?|__tests__|fixtures?|examples?|samples?|mocks?)/'
+        - '(?i)(^|/)(test_[^/]*|[^/]*_test|[^/]*\.test|[^/]*\.spec)\.[a-z]+$'
+      exclude_lines:
+        - '(?i)["''][^"'']*(your[_-]|example|placeholder|changeme|change_me|dummy|xxxx|<[^>]+>|test[_-]?(password|secret|key))[^"'']*["'']'
+
+  - id: SEC-COMMAND
+    exclude_paths: *noise_paths
+    title: Command built from concatenated input
+    severity: HIGH
+    category: SECURITY
+    confidence: 0.9
+    impact: Shell metacharacters in the input can run commands chosen by the caller.
+    recommendation: Invoke the program with an argument list and without a shell.
+    autofix:
+      strategy: shell_to_argv
+    detect:
+      type: regex
+      patterns:
+        - 'os\.system\s*\('
+        - 'subprocess\.(?:run|Popen|call|check_output)\([^)]*shell\s*=\s*True'
+        - '\beval\s*\('
+        - '\bexec\s*\('
+
+  - id: SEC-CONFIG
+    title: Unsafe runtime configuration
+    severity: HIGH
+    category: CONFIG
+    confidence: 0.9
+    impact: Debug mode and an open bind address expose internals and widen who can reach the process.
+    recommendation: Disable debug mode and bind to a local interface unless a deployment config says otherwise.
+    autofix:
+      strategy: harden_config
+    detect:
+      type: regex
+      patterns:
+        - '(?i)\bDEBUG\s*=\s*True\b'
+        - '0\.0\.0\.0'
+        - 'allow_origins\s*=\s*\[\s*["'']\*["'']\s*\]'
+
+  - id: SEC-XSS
+    exclude_paths: *noise_paths
+    title: Untrusted text written as HTML
+    severity: HIGH
+    category: SECURITY
+    confidence: 0.86
+    impact: Markup in the value runs in the user's browser.
+    recommendation: Write text with textContent or an escaping helper, not innerHTML.
+    autofix:
+      strategy: innerhtml_to_text
+    detect:
+      type: regex
+      languages: [javascript]
+      patterns:
+        - '\.innerHTML\s*='
+
+  - id: SEC-AUTH-REMOVED
+    title: Authentication check removed from a handler
+    severity: HIGH
+    category: SECURITY
+    confidence: 0.92
+    impact: Requests that used to be rejected can now reach the handler.
+    recommendation: Restore the authentication check before the handler reads or writes state.
+    autofix:
+      strategy: restore_auth
+    detect:
+      type: hook
+      name: auth_removed
+      params:
+        auth_calls: [require_auth, verify_token, login_required, authenticate, ensure_auth]

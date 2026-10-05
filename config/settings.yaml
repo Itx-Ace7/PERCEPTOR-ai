@@ -1,0 +1,119 @@
+product:
+  name: Perceptor.AI
+  version: "1.0.0"
+  tagline: Predictive Engineering Review & Code Evaluation for Proactive Threat Observation & Risk
+  short: What breaks if you release this change?
+
+server:
+  host: 127.0.0.1
+  port: 8787
+
+cors_origins:
+  - http://localhost:3000
+  - http://127.0.0.1:3000
+  - https://perceptor-ai-release.vercel.app
+  - https://frontend-chi-seven-43.vercel.app
+
+database: data/perceptor.db
+workspaces: data/workspaces
+logs: logs/perceptor.log
+
+llm:
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+  model: openai/gpt-4o-mini
+  timeout_seconds: 45
+  retries: 1
+  total_budget_seconds: 150
+  # The provider answers 2 parallel calls promptly but stalls requests beyond that.
+  max_workers: 2
+  max_context_chars: 28000
+  file_excerpt_chars: 4000
+  max_review_files: 120
+  temperature: 0
+
+analysis:
+  impact_depth: 3
+  complexity_threshold: 12
+  function_length_threshold: 80
+  max_files: 5000
+  max_file_bytes: 300000
+  read_workers: 16
+  read_chunk: 256
+  max_notebook_bytes: 8000000
+  notebook_extensions:
+    - .ipynb
+  max_graph_nodes: 280
+  # An author-written waiver on (or just above) the flagged line silences a static finding.
+  suppress_markers:
+    - nosec
+    - noqa
+    - perceptor-ignore
+  endpoint_file_patterns:
+    - route
+    - controller
+    - api
+  review_languages:
+    - python
+    - javascript
+    - sql
+    - yaml
+    - markdown
+    - html
+    - json
+    - toml
+    - text
+  review_code_languages:
+    - python
+    - javascript
+    - sql
+  review_skip_names:
+    - package-lock.json
+
+retention:
+  keep_runs: 20
+  keep_cache_entries: 200
+
+sandbox:
+  timeout_seconds: 180
+  max_concurrent_runs: 2
+  clone_depth: 40
+  max_path_length: 250
+  upload_max_mb: 30
+
+regex_languages:
+  - python
+  - javascript
+  - yaml
+  - json
+  - toml
+  - sql
+
+languages:
+  .py: python
+  .ipynb: python
+  .js: javascript
+  .jsx: javascript
+  .mjs: javascript
+  .ts: javascript
+  .tsx: javascript
+  .sql: sql
+  .yml: yaml
+  .yaml: yaml
+  .json: json
+  .md: markdown
+  .toml: toml
+  .txt: text
+  .css: css
+  .html: html
+
+skip_dirs:
+  - .git
+  - node_modules
+  - .venv
+  - venv
+  - __pycache__
+  - dist
+  - build
+  - .next
+  - coverage

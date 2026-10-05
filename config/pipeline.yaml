@@ -1,0 +1,108 @@
+groups:
+  source:
+    label: Source
+    accent: "#5eead4"
+  understand:
+    label: Understand
+    accent: "#67e8f9"
+  detect:
+    label: Detect
+    accent: "#fbbf24"
+  reason:
+    label: Reason
+    accent: "#c4b5fd"
+  decide:
+    label: Decide
+    accent: "#fb7185"
+  close:
+    label: Close the loop
+    accent: "#34d399"
+
+nodes:
+  - id: ingest
+    title: Ingest
+    blurb: Clone or unpack the repository and snapshot the parent revision.
+    group: source
+    optional: false
+    depends_on: []
+    position: {x: 0, y: 120}
+
+  - id: parse
+    title: Parse
+    blurb: Extract files, symbols, imports, and calls into a graph.
+    group: understand
+    optional: false
+    depends_on: [ingest]
+    position: {x: 300, y: 120}
+
+  - id: diff
+    title: Diff
+    blurb: See which files and symbols actually changed.
+    group: understand
+    optional: false
+    depends_on: [parse]
+    position: {x: 600, y: 0}
+
+  - id: static
+    title: Static
+    blurb: Run the deterministic rule engine before any model call.
+    group: detect
+    optional: false
+    depends_on: [diff]
+    position: {x: 900, y: 120}
+
+  - id: impact
+    title: Impact
+    blurb: Walk callers, callees, APIs, and failure chains.
+    group: detect
+    optional: false
+    depends_on: [static]
+    position: {x: 1200, y: 0}
+
+  - id: tests
+    title: Test gaps
+    blurb: See whether changed behavior is still covered.
+    group: detect
+    optional: false
+    depends_on: [diff]
+    position: {x: 1200, y: 260}
+
+  - id: ai_review
+    title: AI review
+    blurb: Ask the model to reason over the change and its neighbors.
+    group: reason
+    optional: false
+    depends_on: [impact]
+    position: {x: 1500, y: 0}
+
+  - id: correlate
+    title: Correlate
+    blurb: Merge static, test, and model evidence into one finding.
+    group: reason
+    optional: false
+    depends_on: [ai_review, tests, static]
+    position: {x: 1800, y: 140}
+
+  - id: risk
+    title: Release risk
+    blurb: Turn evidence into an explainable release decision.
+    group: decide
+    optional: false
+    depends_on: [correlate]
+    position: {x: 2100, y: 140}
+
+  - id: fix
+    title: Fix
+    blurb: Apply deterministic repairs and an optional model patch.
+    group: close
+    optional: true
+    depends_on: [risk]
+    position: {x: 1800, y: 420}
+
+  - id: verify
+    title: Verify
+    blurb: Rebuild, retest, and rescore the patched tree.
+    group: close
+    optional: true
+    depends_on: [fix]
+    position: {x: 2100, y: 420}
