@@ -24,6 +24,7 @@ Each finding adds points to the dimension mapped from its category:
 | High | 25 |
 | Medium | 12 |
 | Low | 5 |
+| Info | 2 |
 
 Points are summed per dimension. A finding that merges several hits of one rule in one file counts `points × (1 + g × log2(n))` for `n` hits, so repeats add less than a new issue. Both `g` (`occurrence_growth`) and the scale `s` live in the `scoring` block of `config/policy.yaml`.
 

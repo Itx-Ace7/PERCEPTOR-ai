@@ -23,7 +23,7 @@ Set `PERCEPTOR_API_TOKEN` on the server to require a token on every route except
 
 ## Bundle fields worth knowing
 
-`skipped` lists every file that was left out, each with `path`, `reason` (`binary`, `too large`, `file limit reached`, `path not valid on this OS`, `unreadable notebook`) and `size`. Jupyter notebooks are analysed as their code cells.
+`skipped` lists every file that was left out, each with `path`, `reason`, and `size`. Reasons are `binary`, `too large`, `file limit reached`, `size budget reached`, `minified or generated`, `path not valid on this OS`, and `unreadable notebook`. Jupyter notebooks are analysed as their code cells. Source is ranked ahead of other text, and both the file count and the total size budget are applied before the files are read.
 
 ## Limits and retention
 

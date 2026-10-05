@@ -11,4 +11,4 @@
 9. The risk engine writes NOT READY, READY WITH WARNINGS, or READY, plus the reasons and the failure chain.
 10. **Generate fixes and verify** copies the workspace, applies the repair strategies named in the rule files, compiles the Python, runs pytest, and rescores.
 
-The UI follows the same order: pipeline canvas, blast radius, findings, decision, report.
+The UI follows the same order: pipeline canvas, blast radius, findings, decision, report. The blast radius is a round directed tree sized by connectivity. Simulate release walks the failure chain on that map.

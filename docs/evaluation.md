@@ -14,12 +14,21 @@ Numbers come from `scripts/benchmark.py`, which writes `outputs/benchmark-result
 | Unlabeled extra findings | 0 |
 | Recall on this set | 1.0 |
 | Decision | NOT READY |
+| Score | 43 |
 
 `tests/test_engine.py` asserts the same thing, plus that the repair strategies clear every blocking finding and that duplicate signals merge into one finding.
 
 ## Latency
 
-The synthetic trees are generated Python modules with a call chain. They are a timing fixture, not a vulnerability corpus, so zero findings there is expected. Re-run the benchmark on your machine for current figures.
+The synthetic trees are generated Python modules with a call chain. They are a timing fixture, not a vulnerability corpus, so zero findings there is expected. The last recorded run in `outputs/benchmark-results/benchmark.json`:
+
+| Fixture | Files | Seconds |
+|---|---|---|
+| Small | 51 | 0.16 |
+| Medium | 151 | 0.29 |
+| Large | 501 | 0.96 |
+
+Re-run the benchmark on your machine for current figures.
 
 ## Incremental analysis
 

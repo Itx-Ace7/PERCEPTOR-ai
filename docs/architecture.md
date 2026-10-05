@@ -46,6 +46,10 @@ The runner appends events that the UI consumes:
 
 Each analysis node is cached by the hash of the file contents, the config and rule files, and the hashes of its parent outputs. A repeated run recomputes ingest and parse, because the new workspace has a new commit, and serves the downstream nodes from cache.
 
+## What is read
+
+`config/settings.yaml` sets `max_files` and `max_total_mb`. Source code is ranked ahead of other text, and both limits are applied before anything is read, so the cut only drops the least useful files. Each skipped file is stored with a reason. Python and JavaScript are parsed into symbols. SQL, YAML, JSON, and TOML can match text rules. The blast-radius view keeps the connected neighbourhood, capped by `max_graph_nodes`.
+
 ## Isolation
 
 Untrusted trees are copied into `data/workspaces` and are not executed as services. Verification runs `compileall` and `pytest` in that copy with a timeout from `config/settings.yaml`. This is process isolation, not a container. Docker was not available in the build environment.
