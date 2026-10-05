@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Core } from "cytoscape";
+import { RadialMap } from "@/components/RadialMap";
 import { presentGraph, spanElements } from "@/lib/blastLayout";
 import { releaseChain } from "@/lib/release";
 import type { Bundle } from "@/lib/types";
@@ -136,6 +137,8 @@ export function BlastMap({
   const [tip, setTip] = useState<{ x: number; y: number; title: string; meta: string } | null>(null);
   const [showImports, setShowImports] = useState(false);
   const [graphError, setGraphError] = useState("");
+  // The round directed tree is the default view; the boxed per-file map stays one click away.
+  const [mode, setMode] = useState<"tree" | "boxed">("tree");
   const framed = presentGraph(bundle);
   const importsRef = useRef(showImports);
   importsRef.current = showImports;
@@ -150,7 +153,7 @@ export function BlastMap({
 
   useEffect(() => {
     let destroyed = false;
-    if (!host.current) return;
+    if (mode !== "boxed" || !host.current) return;
     const font = getComputedStyle(document.body).fontFamily;
     (async () => {
       const cytoscape = (await import("cytoscape")).default;
@@ -237,19 +240,19 @@ export function BlastMap({
       cyRef.current?.destroy();
       cyRef.current = null;
     };
-  }, [graphKey]);
+  }, [graphKey, mode]);
 
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
     cy.edges("[kind = 'imports']").style("display", showImports ? "element" : "none");
-  }, [showImports, graphKey]);
+  }, [showImports, graphKey, mode]);
 
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
     cy.edges("[kind = 'calls']").not(".chain").toggleClass("quiet", !showCalls);
-  }, [showCalls, graphKey]);
+  }, [showCalls, graphKey, mode]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -265,39 +268,52 @@ export function BlastMap({
         cy.center(node);
       }
     }
-  }, [activeId, graphKey]);
+  }, [activeId, graphKey, mode]);
 
   return (
     <div className="blast-wrap">
       <div className="blast-stage">
-        <div ref={host} className="cy" />
-        {graphError && <p className="graph-error">{graphError}</p>}
-        {tip && (
-          <div className="graph-tip" style={{ left: tip.x, top: tip.y }}>
-            <strong>{tip.title}</strong>
-            <span>{tip.meta}</span>
-          </div>
+        <div className="mode-switch" role="tablist" aria-label="Map style">
+          <button type="button" role="tab" aria-selected={mode === "tree"} className={mode === "tree" ? "on" : ""} onClick={() => setMode("tree")}>Tree</button>
+          <button type="button" role="tab" aria-selected={mode === "boxed"} className={mode === "boxed" ? "on" : ""} onClick={() => setMode("boxed")}>Boxed</button>
+        </div>
+        {mode === "tree" && <RadialMap bundle={bundle} activeId={activeId} />}
+        {mode === "boxed" && (
+          <>
+            <div ref={host} className="cy" />
+            {graphError && <p className="graph-error">{graphError}</p>}
+            {tip && (
+              <div className="graph-tip" style={{ left: tip.x, top: tip.y }}>
+                <strong>{tip.title}</strong>
+                <span>{tip.meta}</span>
+              </div>
+            )}
+            <div className="graph-controls">
+              <button type="button" className={showCalls ? "on" : ""} onClick={() => setShowCalls((value) => !value)}>
+                {showCalls ? "Calls on" : `Show calls (${callCount})`}
+              </button>
+              <button type="button" className={showImports ? "on" : ""} onClick={() => setShowImports((value) => !value)}>
+                {showImports ? "Imports on" : "Show imports"}
+              </button>
+              <button type="button" onClick={() => cyRef.current?.fit(undefined, 36)}>Fit</button>
+            </div>
+            <div className="graph-legend mono">
+              <span><i className="file" /> file</span>
+              <span><i className="fn" /> symbol</span>
+              <span><i className="risk" /> finding</span>
+              <span><i className="call" /> call</span>
+            </div>
+          </>
         )}
-        <div className="graph-controls">
-          <button type="button" className={showCalls ? "on" : ""} onClick={() => setShowCalls((value) => !value)}>
-            {showCalls ? "Calls on" : `Show calls (${callCount})`}
-          </button>
-          <button type="button" className={showImports ? "on" : ""} onClick={() => setShowImports((value) => !value)}>
-            {showImports ? "Imports on" : "Show imports"}
-          </button>
-          <button type="button" onClick={() => cyRef.current?.fit(undefined, 36)}>Fit</button>
-        </div>
-        <div className="graph-legend mono">
-          <span><i className="file" /> file</span>
-          <span><i className="fn" /> symbol</span>
-          <span><i className="risk" /> finding</span>
-          <span><i className="call" /> call</span>
-        </div>
       </div>
       <aside className="side">
         <p className="kicker">Blast radius</p>
         <h2>What this change touches</h2>
-        <p className="muted">Each panel is a file. The symbols inside it are the functions that review touched. Cyan lines are calls. Imports stay off until you ask for them, so the map can spread out.</p>
+        <p className="muted">
+          {mode === "tree"
+            ? "The release sits at the centre. Each ring is one step further along the calls, and arrows point the way a call goes. Pink marks the failure chain. Hover or tap a circle to see only its connections."
+            : "Each panel is a file. The symbols inside it are the functions that review touched. Cyan lines are calls. Imports stay off until you ask for them, so the map can spread out."}
+        </p>
         <div className="stat-grid">
           {[
             ["changed_files", "Files"],
