@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Activity, Command, Crosshair, FileSearch, Gauge, ScrollText } from "lucide-react";
 import { API_BASE, fetchBundle, reportUrl, startVerify, withToken } from "@/lib/api";
 import { releaseChain } from "@/lib/release";
+import { sameBundle } from "@/lib/sameBundle";
 import { IDLE, playSimulation, type SimState } from "@/lib/simulation";
 import type { Bundle } from "@/lib/types";
 import { Credit } from "./Credit";
@@ -39,34 +40,66 @@ export function Workspace({ runId, initialView }: { runId: string; initialView?:
   const pendingStart = useRef(false);
   const [report, setReport] = useState("");
   const [verifying, setVerifying] = useState(false);
+  // Bumped when a finished run starts again (Verify), so the live connection is opened afresh.
+  const [restartKey, setRestartKey] = useState(0);
 
   useEffect(() => {
     let stop = false;
+    let inFlight = false;
+    let again = false;
+    let finished = false;
+    let source: EventSource | null = null;
+    let timer = 0;
+
+    const end = () => {
+      // A finished run never changes unless Verify starts it again, which restarts this effect.
+      source?.close();
+      source = null;
+      window.clearInterval(timer);
+    };
+
     const load = async () => {
+      // One request at a time. A burst of events while one is running becomes a single follow-up.
+      if (inFlight) {
+        again = true;
+        return;
+      }
+      inFlight = true;
       try {
         const next = await fetchBundle(runId);
-        if (!stop) {
-          setBundle(next);
-          setError("");
-        }
-        return next;
+        if (stop) return;
+        // Skip the state update when nothing changed, so an unchanged poll cannot re-render the tree.
+        setBundle((current) => (current && sameBundle(current, next) ? current : next));
+        setError("");
+        finished = next.run.status === "COMPLETED" || next.run.status === "FAILED";
+        if (finished) end();
       } catch (err) {
         if (!stop) setError(err instanceof Error ? err.message : "The analysis service is not reachable.");
-        return null;
+      } finally {
+        inFlight = false;
+        if (again && !stop && !finished) {
+          again = false;
+          load();
+        }
       }
     };
+
     load();
-    const source = new EventSource(withToken(`${API_BASE}/api/runs/${runId}/events`));
+    source = new EventSource(withToken(`${API_BASE}/api/runs/${runId}/events`));
     source.onmessage = () => {
       load();
     };
-    const timer = window.setInterval(load, 1000);
+    // The browser reconnects a closed stream on its own. When the server ends it, stop instead.
+    source.onerror = () => {
+      if (finished) end();
+    };
+    timer = window.setInterval(load, 1500);
     return () => {
       stop = true;
-      source.close();
+      source?.close();
       window.clearInterval(timer);
     };
-  }, [runId]);
+  }, [runId, restartKey]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -146,15 +179,18 @@ export function Workspace({ runId, initialView }: { runId: string; initialView?:
     setView("decision");
     try {
       await startVerify(runId);
+      setRestartKey((key) => key + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification could not start.");
       setVerifying(false);
     }
   }
 
+  // Depend on booleans, not the verification object, so a fresh-but-equal bundle cannot re-run this.
+  const verifiedAndDone = Boolean(bundle?.verification) && bundle?.run.status === "COMPLETED";
   useEffect(() => {
-    if (bundle?.verification && bundle.run.status === "COMPLETED") setVerifying(false);
-  }, [bundle?.verification, bundle?.run.status]);
+    if (verifiedAndDone) setVerifying(false);
+  }, [verifiedAndDone]);
 
   const risk = bundle?.risk;
   const running = bundle?.pipeline.nodes.find((node) => bundle.nodes[node.id]?.status === "running");
