@@ -36,7 +36,10 @@ analysis:
   impact_depth: 3
   complexity_threshold: 12
   function_length_threshold: 80
-  max_files: 5000
+  # Two guards against a runaway upload. Both keep source code first, so the cut only ever drops
+  # the least useful files. Raise them for a bigger machine.
+  max_files: 25000
+  max_total_mb: 200
   max_file_bytes: 300000
   read_workers: 16
   read_chunk: 256

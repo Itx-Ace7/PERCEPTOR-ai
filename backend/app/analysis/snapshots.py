@@ -127,15 +127,25 @@ def scan_tree(root: Path, settings: Settings) -> tuple[dict[str, str], list[dict
         rank = 0 if language in settings.review_code_languages else 1 if language in settings.review_languages else 2
         candidates.append((rank, rel, path, size))
     candidates.sort(key=lambda item: (item[0], item[1]))
-    # Reading is I/O bound, so read in parallel chunks; stop reading once the file limit is met.
+    # Decide before reading anything what fits: source code first, then the size budget, then the
+    # file count. The cut therefore only ever drops the least useful files, and it costs no I/O.
+    budget = settings.max_total_bytes
+    spent = 0
+    kept: list[tuple[int, str, Path, int]] = []
+    for item in candidates:
+        _rank, rel, _path, size = item
+        if len(kept) >= settings.max_files:
+            skipped.append({"path": rel, "reason": "file limit reached", "size": size})
+        elif spent + size > budget:
+            skipped.append({"path": rel, "reason": "size budget reached", "size": size})
+        else:
+            spent += size
+            kept.append(item)
+    # Reading is I/O bound, so read in parallel chunks.
     chunk = max(1, settings.read_chunk)
     with ThreadPoolExecutor(max_workers=settings.read_workers) as pool:
-        for start in range(0, len(candidates), chunk):
-            window = candidates[start : start + chunk]
-            if len(texts) >= settings.max_files:
-                for _rank, rel, _path, size in window:
-                    skipped.append({"path": rel, "reason": "file limit reached", "size": size})
-                continue
+        for start in range(0, len(kept), chunk):
+            window = kept[start : start + chunk]
             payloads = list(pool.map(lambda item: item[2].read_bytes(), window))
             for (_rank, rel, _path, size), raw in zip(window, payloads):
                 _accept(rel, size, raw, texts, skipped, settings)

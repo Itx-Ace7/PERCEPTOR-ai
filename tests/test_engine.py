@@ -475,3 +475,21 @@ def test_calls_do_not_link_unrelated_code_that_shares_a_name():
     assert "sym:svc/main.py::helper" in targets            # same file wins
     assert "sym:svc/util.py::sleep" in targets             # same folder, same language
     assert not any("web/utils.js" in t or "other/helper.py" in t for t in targets)
+
+
+def test_size_budget_drops_the_least_useful_files_first_and_says_why(tmp_path: Path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "max_files", 100)
+    (tmp_path / "core.py").write_text("x = 1\n" * 100, encoding="utf-8", newline="\n")
+    (tmp_path / "util.py").write_text("y = 2\n" * 100, encoding="utf-8", newline="\n")
+    (tmp_path / "notes.md").write_text("word " * 400, encoding="utf-8", newline="\n")
+    # Budget fits both source files and nothing more, so the prose is the one that must be dropped.
+    monkeypatch.setattr(settings, "max_total_bytes", (tmp_path / "core.py").stat().st_size + (tmp_path / "util.py").stat().st_size + 50)
+    texts, skipped = scan_tree(tmp_path, settings)
+    assert sorted(texts) == ["core.py", "util.py"]
+    assert {item["path"]: item["reason"] for item in skipped} == {"notes.md": "size budget reached"}
+
+
+def test_default_limits_cover_a_repository_of_several_thousand_files():
+    settings = get_settings()
+    assert settings.max_files >= 10000 and settings.max_total_bytes >= 50 * 1024 * 1024
