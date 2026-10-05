@@ -90,6 +90,9 @@ These figures describe this fixture and this machine. They are not a general det
 
 ```powershell
 .\scripts\setup.ps1
+
+## 10. developed by TEAM Cryptonix
+- P rahul
 .\scripts\run.ps1
 ```
 
