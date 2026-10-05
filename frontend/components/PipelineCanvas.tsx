@@ -49,7 +49,7 @@ export function PipelineCanvas({ bundle }: { bundle: Bundle }) {
   const groups = bundle.pipeline.groups || {};
   const nodes = useMemo(() => bundle.pipeline.nodes.map((node, index) => {
     const state = bundle.nodes[node.id];
-    const accent = groups[node.group]?.accent || "#7af3d6";
+    const accent = groups[node.group]?.accent || "#5eead4";
     return {
       id: node.id,
       type: "stage",
@@ -76,7 +76,7 @@ export function PipelineCanvas({ bundle }: { bundle: Bundle }) {
       type: "smoothstep",
       animated: bundle.nodes[node.id]?.status === "running" || bundle.nodes[source]?.status === "running",
       className: bundle.nodes[node.id]?.status === "running" || bundle.nodes[source]?.status === "running" ? "edge-live" : "edge-idle",
-      style: { stroke: "rgba(122,243,214,0.72)", strokeWidth: 1.8 },
+      style: { stroke: "rgba(94,234,212,0.72)", strokeWidth: 1.8 },
     })),
   ), [signature]);
 
@@ -92,7 +92,7 @@ export function PipelineCanvas({ bundle }: { bundle: Bundle }) {
         proOptions={{ hideAttribution: true }}
         nodesConnectable={false}
       >
-        <Background variant={BackgroundVariant.Dots} color="rgba(122,243,214,0.16)" gap={26} size={1.1} />
+        <Background variant={BackgroundVariant.Dots} color="rgba(94,234,212,0.16)" gap={26} size={1.1} />
         <Controls showInteractive={false} />
         <MiniMap
           pannable
@@ -101,9 +101,9 @@ export function PipelineCanvas({ bundle }: { bundle: Bundle }) {
           nodeStrokeWidth={2}
           nodeColor={(node) => {
             const status = String((node.data as { status?: string }).status || "");
-            if (status === "running") return "#7af3d6";
-            if (status === "failed") return "#ff6d8a";
-            if (status === "completed") return "#9dffc3";
+            if (status === "running") return "#5eead4";
+            if (status === "failed") return "#fb7185";
+            if (status === "completed") return "#4ade80";
             return "#243038";
           }}
         />

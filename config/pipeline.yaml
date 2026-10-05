@@ -10,13 +10,13 @@ groups:
     accent: "#fbbf24"
   reason:
     label: Reason
-    accent: "#c4b5fd"
+    accent: "#a5b4fc"
   decide:
     label: Decide
-    accent: "#fb7185"
+    accent: "#f472b6"
   close:
     label: Close the loop
-    accent: "#34d399"
+    accent: "#4ade80"
 
 nodes:
   - id: ingest

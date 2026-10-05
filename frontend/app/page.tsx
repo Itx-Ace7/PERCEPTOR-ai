@@ -156,15 +156,15 @@ function Constellation() {
             y1={NODES[from][1]}
             x2={NODES[to][0]}
             y2={NODES[to][1]}
-            stroke={index % 4 === 0 ? "rgba(255,45,166,0.55)" : "rgba(62,224,255,0.45)"}
+            stroke={index % 4 === 0 ? "rgba(244,114,182,0.55)" : "rgba(94,234,212,0.45)"}
             strokeWidth="1.2"
             style={{ animationDelay: `${index * -1.4}s` }}
           />
         ))}
         {NODES.map(([x, y, label]) => (
           <g key={label}>
-            <rect x={Number(x) - 58} y={Number(y) - 20} width="116" height="40" rx="6" fill="#0c1018" stroke="#3ee0ff" strokeOpacity="0.7" />
-            <path d={`M${Number(x) + 44} ${Number(y) - 20} h12 v12`} fill="none" stroke="#ff2da6" strokeWidth="1.2" />
+            <rect x={Number(x) - 58} y={Number(y) - 20} width="116" height="40" rx="6" fill="#0c1018" stroke="#5eead4" strokeOpacity="0.7" />
+            <path d={`M${Number(x) + 44} ${Number(y) - 20} h12 v12`} fill="none" stroke="#f472b6" strokeWidth="1.2" />
             <text x={x} y={Number(y) + 5} textAnchor="middle" fill="#e7fbff" fontSize="13" fontFamily="var(--font-outfit), sans-serif">{label}</text>
           </g>
         ))}

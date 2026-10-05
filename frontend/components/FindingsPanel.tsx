@@ -74,8 +74,8 @@ export function FindingsPanel({ findings }: { findings: Finding[] }) {
                   rules: [],
                   colors: {
                     "editor.background": "#0c0f14",
-                    "editorLineNumber.foreground": "#667084",
-                    "editorLineNumber.activeForeground": "#f4f7fb",
+                    "editorLineNumber.foreground": "#8a94a9",
+                    "editorLineNumber.activeForeground": "#f6f8fc",
                   },
                 });
               }}
@@ -131,21 +131,21 @@ function Evidence({
         const y = 28 + index * 34;
         return (
           <g key={`${leaf.rule_id}-${leaf.line}-${index}`}>
-            <line x1="168" y1={y} x2="292" y2={height / 2} stroke="rgba(122,243,214,0.45)" />
+            <line x1="168" y1={y} x2="292" y2={height / 2} stroke="rgba(94,234,212,0.45)" />
             <rect x="12" y={y - 14} width="156" height="28" rx="8" fill="#141820" stroke="rgba(244,247,251,0.14)" />
-            <text x="22" y={y + 4} fill="#f4f7fb" fontSize="11">{leaf.source} · {leaf.rule_id}</text>
+            <text x="22" y={y + 4} fill="#f6f8fc" fontSize="11">{leaf.source} · {leaf.rule_id}</text>
           </g>
         );
       })}
-      <rect x="292" y={height / 2 - 24} width="188" height="48" rx="14" fill="#10241f" stroke="#7af3d6" />
-      <text x="306" y={height / 2 + 4} fill="#f4f7fb" fontSize="12">{title.slice(0, 24)}</text>
+      <rect x="292" y={height / 2 - 24} width="188" height="48" rx="14" fill="#10241f" stroke="#5eead4" />
+      <text x="306" y={height / 2 + 4} fill="#f6f8fc" fontSize="12">{title.slice(0, 24)}</text>
       {right.map((item, index) => {
         const y = 36 + index * 40;
         return (
           <g key={item.id}>
-            <line x1="480" y1={height / 2} x2="560" y2={y} stroke="rgba(201,188,255,0.55)" />
+            <line x1="480" y1={height / 2} x2="560" y2={y} stroke="rgba(165,180,252,0.55)" />
             <rect x="560" y={y - 13} width="184" height="28" rx="8" fill="#141820" stroke="rgba(244,247,251,0.14)" />
-            <text x="572" y={y + 5} fill="#c9bcff" fontSize="11">{item.label}</text>
+            <text x="572" y={y + 5} fill="#a5b4fc" fontSize="11">{item.label}</text>
           </g>
         );
       })}

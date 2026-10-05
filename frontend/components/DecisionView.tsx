@@ -32,7 +32,7 @@ export function DecisionView({
     return <div className="empty">The release decision is written after correlation finishes.</div>;
   }
   const tone = risk.decision === "NOT_READY" ? "bad" : risk.decision === "READY" ? "good" : "warn";
-  const stroke = tone === "bad" ? "#ff6d8a" : tone === "good" ? "#8dffb6" : "#ffc56d";
+  const stroke = tone === "bad" ? "#fb7185" : tone === "good" ? "#4ade80" : "#fbbf24";
   const chart = Object.entries(risk.dimensions)
     .filter(([, info]) => info.weight > 0 || info.findings > 0)
     .map(([name, info]) => ({ name, score: info.score }));
@@ -59,8 +59,8 @@ export function DecisionView({
             strokeDasharray={`${dash} ${circumference}`}
             transform="rotate(-90 105 105)"
           />
-          <text x="105" y="98" textAnchor="middle" fill="#f4f7fb" fontSize="46" fontFamily="var(--font-display), sans-serif">{risk.score}</text>
-          <text x="105" y="122" textAnchor="middle" fill="#9aa3b5" fontSize="11" letterSpacing="1.5">{risk.overall}</text>
+          <text x="105" y="98" textAnchor="middle" fill="#f6f8fc" fontSize="46" fontFamily="var(--font-display), sans-serif">{risk.score}</text>
+          <text x="105" y="122" textAnchor="middle" fill="#a8b1c4" fontSize="11" letterSpacing="1.5">{risk.overall}</text>
         </svg>
         <div>
           <p className="kicker">Release readiness</p>
@@ -90,10 +90,10 @@ export function DecisionView({
           <div style={{ width: "100%", height: 180 }}>
             <ResponsiveContainer>
               <BarChart data={chart}>
-                <XAxis dataKey="name" stroke="#9aa3b5" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#9aa3b5" fontSize={11} domain={[0, 100]} tickLine={false} axisLine={false} width={28} />
-                <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={{ background: "#12161e", border: "1px solid rgba(244,247,251,0.12)", borderRadius: 12, color: "#f4f7fb" }} />
-                <Bar dataKey="score" fill="#7af3d6" radius={[7, 7, 0, 0]} />
+                <XAxis dataKey="name" stroke="#a8b1c4" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#a8b1c4" fontSize={11} domain={[0, 100]} tickLine={false} axisLine={false} width={28} />
+                <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={{ background: "#12161e", border: "1px solid rgba(244,247,251,0.12)", borderRadius: 12, color: "#f6f8fc" }} />
+                <Bar dataKey="score" fill="#5eead4" radius={[7, 7, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
