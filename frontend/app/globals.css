@@ -576,6 +576,53 @@ a { color: inherit; }
   transition: background 0.2s ease, color 0.2s ease;
 }
 .mode-switch button.on { background: var(--grad); color: #04120f; }
+.sim-bar { position: absolute; z-index: 7; top: 16px; left: 50%; transform: translateX(-50%); }
+.sim-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #04120f;
+  background: var(--grad);
+  box-shadow: 0 8px 30px rgba(94, 234, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 0.25s var(--ease), box-shadow 0.25s ease, filter 0.2s ease;
+}
+.sim-play:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(129, 140, 248, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.55); }
+.sim-play:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; filter: saturate(0.5); }
+.sim-play.on { background: rgba(251, 113, 133, 0.16); color: var(--rose); border: 1px solid rgba(251, 113, 133, 0.6); box-shadow: 0 0 30px rgba(251, 113, 133, 0.25); }
+.sim-hud {
+  position: absolute;
+  z-index: 8;
+  left: 16px;
+  bottom: 56px;
+  width: min(340px, calc(100% - 32px));
+  padding: 14px 16px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(244, 114, 182, 0.5);
+  background: rgba(9, 11, 18, 0.9);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(244, 114, 182, 0.14);
+}
+.sim-hud.done { border-color: rgba(74, 222, 128, 0.55); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(74, 222, 128, 0.16); }
+.sim-head { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+.sim-kind { padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line-strong); }
+.sim-hud h3 { margin: 8px 0 2px; font-family: var(--font-display), sans-serif; font-size: 20px; letter-spacing: -0.03em; overflow-wrap: anywhere; }
+.sim-hud p { margin: 0; font-size: 13px; line-height: 1.45; }
+.sim-file { margin-top: 4px !important; color: var(--faint); font-size: 11px !important; overflow-wrap: anywhere; }
+.sim-track { height: 3px; margin: 12px 0 10px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.sim-track i { display: block; height: 100%; background: var(--grad); }
+.sim-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 120px; overflow: auto; }
+.sim-steps li { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--faint); transition: color 0.3s ease; }
+.sim-steps li.past { color: var(--muted); }
+.sim-steps li.now { color: var(--ink); font-weight: 650; }
+.sim-dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--line-strong); flex: 0 0 auto; transition: background 0.3s ease, box-shadow 0.3s ease; }
+.sim-steps li.past .sim-dot { background: var(--magenta); border-color: var(--magenta); }
+.sim-steps li.now .sim-dot { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+.sim-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .radial-stage {
   position: absolute;
   inset: 0;

@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { Core } from "cytoscape";
 import { RadialMap } from "@/components/RadialMap";
+import { SimulationHud } from "@/components/SimulationHud";
+import { IDLE, type SimState } from "@/lib/simulation";
+import { applySimulation } from "@/lib/simulationEffects";
 import { presentGraph, spanElements } from "@/lib/blastLayout";
 import { topByDegree } from "@/lib/degree";
 import { releaseChain } from "@/lib/release";
@@ -129,12 +132,22 @@ const DENSE_CALLS = 60;
 export function BlastMap({
   bundle,
   activeId,
+  sim = IDLE,
+  onSimulate,
+  onStop,
+  onReady,
 }: {
   bundle: Bundle;
   activeId?: string;
+  sim?: SimState;
+  onSimulate?: () => void;
+  onStop?: () => void;
+  onReady?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
   const [tip, setTip] = useState<{ x: number; y: number; title: string; meta: string } | null>(null);
   const [showImports, setShowImports] = useState(false);
   const [graphError, setGraphError] = useState("");
@@ -234,6 +247,7 @@ export function BlastMap({
       scaleFileLabels();
       cy.on("pan zoom", () => setTip(null));
       cyRef.current = cy;
+      onReadyRef.current?.();
       // Development-only handle so the layout can be measured in a real browser.
       if (process.env.NODE_ENV !== "production") (window as unknown as { __cy?: Core }).__cy = cy;
     })();
@@ -256,21 +270,13 @@ export function BlastMap({
     cy.edges("[kind = 'calls']").not(".chain").toggleClass("quiet", !showCalls);
   }, [showCalls, graphKey, mode]);
 
+  const boxedEffect = useRef<{ stop?: () => void }>({});
   useEffect(() => {
     const cy = cyRef.current;
-    if (!cy) return;
-    cy.nodes().removeClass("sim");
-    if (activeId) {
-      const node = cy.$id(activeId);
-      if (!node.nonempty()) return;
-      node.addClass("sim");
-      try {
-        cy.animate({ center: { eles: node }, duration: 420 });
-      } catch {
-        cy.center(node);
-      }
-    }
-  }, [activeId, graphKey, mode]);
+    if (!cy || mode !== "boxed") return;
+    applySimulation(cy, sim, boxedEffect.current);
+  }, [sim, graphKey, mode]);
+  useEffect(() => () => boxedEffect.current.stop?.(), []);
 
   return (
     <div className="blast-wrap">
@@ -279,7 +285,19 @@ export function BlastMap({
           <button type="button" role="tab" aria-selected={mode === "tree"} className={mode === "tree" ? "on" : ""} onClick={() => setMode("tree")}>Tree</button>
           <button type="button" role="tab" aria-selected={mode === "boxed"} className={mode === "boxed" ? "on" : ""} onClick={() => setMode("boxed")}>Boxed</button>
         </div>
-        {mode === "tree" && <RadialMap bundle={bundle} activeId={activeId} />}
+        {mode === "tree" && <RadialMap bundle={bundle} activeId={activeId} sim={sim} onReady={onReady} />}
+        <div className="sim-bar">
+          {sim.status === "idle" ? (
+            <button type="button" className="sim-play" onClick={onSimulate} disabled={chain.length === 0} title={chain.length === 0 ? "No failure chain to play yet" : "Play the failure chain"}>
+              <span aria-hidden="true">▶</span> Simulate release
+            </button>
+          ) : (
+            <button type="button" className="sim-play on" onClick={onStop}>
+              <span aria-hidden="true">■</span> Stop
+            </button>
+          )}
+        </div>
+        <SimulationHud sim={sim} chain={chain} />
         {mode === "boxed" && (
           <>
             <div ref={host} className="cy" />

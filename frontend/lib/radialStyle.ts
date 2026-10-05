@@ -98,5 +98,10 @@ export const RADIAL_STYLE = [
   { selector: "edge.dim", style: { opacity: 0.05 } },
   { selector: "node.hover", style: { "border-color": CYAN, "border-width": 4, "z-index": 10 } },
   { selector: "edge.hot", style: { "line-color": CYAN, "target-arrow-color": CYAN, width: 3, opacity: 1, "z-index": 9 } },
-  { selector: "node.sim", style: { "background-color": "#d9fff4", "border-color": CYAN, "border-width": 5, color: "#04120f", "z-index": 12 } },
+  { selector: "node.sim", style: { "background-color": "#d9fff4", "border-color": CYAN, "border-width": 5, color: "#04120f", "z-index": 12, "underlay-color": CYAN, "underlay-shape": "ellipse" } },
+  // While a simulation plays: untouched nodes recede, reached steps stay lit in the chain colour.
+  { selector: "node.dimmed", style: { opacity: 0.12 } },
+  { selector: "node.reached", style: { opacity: 1, "border-color": PINK, "border-width": 4, "underlay-color": PINK, "underlay-opacity": 0.4, "z-index": 11 } },
+  { selector: "edge.sim-faded", style: { opacity: 0.03 } },
+  { selector: "edge.sim-route", style: { opacity: 1, width: 4.5, "line-color": PINK, "target-arrow-color": PINK, "arrow-scale": 1.4, "z-index": 13 } },
 ];

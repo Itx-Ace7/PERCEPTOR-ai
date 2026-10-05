@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Core, NodeSingular } from "cytoscape";
 import { treeElements } from "@/lib/radialElements";
 import { RADIAL_STYLE } from "@/lib/radialStyle";
+import { IDLE, type SimState } from "@/lib/simulation";
+import { applySimulation } from "@/lib/simulationEffects";
 import type { Bundle } from "@/lib/types";
 
 type Tip = { x: number; y: number; title: string; meta: string };
@@ -12,8 +14,10 @@ type Tip = { x: number; y: number; title: string; meta: string };
 const HUB_LABELS = 14;
 
 /** Round, directed blast-radius tree: the release at the centre, call depth as rings. */
-export function RadialMap({ bundle, activeId }: { bundle: Bundle; activeId?: string }) {
+export function RadialMap({ bundle, activeId, sim = IDLE, onReady }: { bundle: Bundle; activeId?: string; sim?: SimState; onReady?: () => void }) {
   const host = useRef<HTMLDivElement>(null);
+  const readyRef = useRef(onReady);
+  readyRef.current = onReady;
   const cyRef = useRef<Core | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
   const [error, setError] = useState("");
@@ -102,6 +106,7 @@ export function RadialMap({ bundle, activeId }: { bundle: Bundle; activeId?: str
       cy.on("zoom", scaleLabels);
       scaleLabels();
       cyRef.current = cy;
+      readyRef.current?.();
       if (process.env.NODE_ENV !== "production") (window as unknown as { __cy?: Core }).__cy = cy;
     })();
     return () => {
@@ -111,16 +116,16 @@ export function RadialMap({ bundle, activeId }: { bundle: Bundle; activeId?: str
     };
   }, [key]);
 
+  const effect = useRef<{ stop?: () => void }>({});
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
-    cy.nodes().removeClass("sim");
-    if (!activeId) return;
-    const node = cy.$id(activeId);
-    if (!node.nonempty()) return;
-    node.addClass("sim");
-    cy.animate({ center: { eles: node }, duration: 420 });
-  }, [activeId, key]);
+    const wasPlaying = effect.current.stop !== undefined;
+    applySimulation(cy, sim, effect.current);
+    // When a run ends or is stopped, bring the whole tree back into view.
+    if (sim.status === "idle" && wasPlaying) cy.animate({ fit: { eles: cy.elements(), padding: 56 } }, { duration: 600, easing: "ease-in-out-cubic" });
+  }, [sim, key]);
+  useEffect(() => () => effect.current.stop?.(), []);
 
   return (
     <div className="radial-stage">

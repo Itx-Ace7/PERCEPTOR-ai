@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Activity, Command, Crosshair, FileSearch, Gauge, ScrollText } from "lucide-react";
 import { API_BASE, fetchBundle, reportUrl, startVerify, withToken } from "@/lib/api";
 import { releaseChain } from "@/lib/release";
+import { IDLE, playSimulation, type SimState } from "@/lib/simulation";
 import type { Bundle } from "@/lib/types";
 import { Credit } from "./Credit";
 import { Mark } from "./Mark";
@@ -33,6 +34,9 @@ export function Workspace({ runId, initialView }: { runId: string; initialView?:
   const [palette, setPalette] = useState(false);
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string>();
+  const [sim, setSim] = useState<SimState>(IDLE);
+  const stopSim = useRef<(() => void) | null>(null);
+  const pendingStart = useRef(false);
   const [report, setReport] = useState("");
   const [verifying, setVerifying] = useState(false);
 
@@ -94,21 +98,48 @@ export function Workspace({ runId, initialView }: { runId: string; initialView?:
     items.push({
       id: "simulate",
       label: "Simulate release",
-      run: () => {
-        setView("blast");
-        simulate();
-      },
+      run: () => simulate(),
     });
     return items.filter((item) => item.label.toLowerCase().includes(query.toLowerCase()));
   }, [query, bundle]);
 
-  function simulate() {
-    const chain = bundle ? releaseChain(bundle) : [];
-    chain.forEach((node, index) => {
-      window.setTimeout(() => setActiveId(node.id), index * 700);
-    });
-    window.setTimeout(() => setActiveId(undefined), chain.length * 700 + 900);
+  function stopSimulation() {
+    stopSim.current?.();
+    stopSim.current = null;
+    setSim(IDLE);
+    setActiveId(undefined);
   }
+
+  function start() {
+    // A second press restarts from the first step instead of stacking a second run on the first.
+    stopSim.current?.();
+    const chain = bundle ? releaseChain(bundle) : [];
+    stopSim.current = playSimulation(chain, (next) => {
+      setSim(next);
+      setActiveId(next.status === "idle" ? undefined : next.current?.id);
+    });
+  }
+
+  function simulate() {
+    // From another view the map is not on screen yet. Switch to it and wait for it to report
+    // ready, so the first step is never played to an empty stage.
+    if (view !== "blast") {
+      setSim({ ...IDLE, status: "running", step: -1, total: bundle ? releaseChain(bundle).length : 0 });
+      pendingStart.current = true;
+      setView("blast");
+      router.replace(`/runs/${runId}?view=blast`);
+      return;
+    }
+    start();
+  }
+
+  function mapReady() {
+    if (!pendingStart.current) return;
+    pendingStart.current = false;
+    start();
+  }
+
+  useEffect(() => () => stopSim.current?.(), []);
 
   async function verify() {
     setVerifying(true);
@@ -217,10 +248,10 @@ export function Workspace({ runId, initialView }: { runId: string; initialView?:
             <AnimatePresence mode="wait">
               <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
                 {view === "canvas" && <PipelineCanvas bundle={bundle} />}
-                {view === "blast" && <BlastMap bundle={bundle} activeId={activeId} />}
+                {view === "blast" && <BlastMap bundle={bundle} activeId={activeId} sim={sim} onSimulate={simulate} onStop={stopSimulation} onReady={mapReady} />}
                 {view === "findings" && <FindingsPanel findings={bundle.findings} />}
                 {view === "decision" && (
-                  <DecisionView bundle={bundle} activeId={activeId} onSimulate={() => { setView("blast"); simulate(); }} onVerify={verify} verifying={verifying || bundle.run.status === "VERIFYING"} />
+                  <DecisionView bundle={bundle} activeId={activeId} onSimulate={simulate} onVerify={verify} verifying={verifying || bundle.run.status === "VERIFYING"} />
                 )}
                 {view === "report" && (
                   <div className="report">
