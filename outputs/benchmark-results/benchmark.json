@@ -6,30 +6,30 @@
     "unlabeled": [],
     "recall": 1.0,
     "decision": "NOT_READY",
-    "score": 59,
-    "seconds": 0.039
+    "score": 43,
+    "seconds": 0.043
   },
   "repository_sizes": {
     "small": {
       "files": 51,
       "symbols": 51,
       "findings": 0,
-      "seconds": 0.637,
-      "files_per_second": 80.1
+      "seconds": 0.16,
+      "files_per_second": 317.95
     },
     "medium": {
       "files": 151,
       "symbols": 151,
       "findings": 0,
-      "seconds": 0.896,
-      "files_per_second": 168.45
+      "seconds": 0.288,
+      "files_per_second": 524.0
     },
     "large": {
       "files": 501,
       "symbols": 501,
       "findings": 0,
-      "seconds": 3.273,
-      "files_per_second": 153.08
+      "seconds": 0.959,
+      "files_per_second": 522.43
     }
   },
   "note": "detection runs on tests/fixtures.py. repository_sizes are generated timing fixtures, not vulnerability corpora."
