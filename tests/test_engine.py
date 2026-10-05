@@ -426,3 +426,52 @@ def test_api_token_gates_everything_except_health(monkeypatch):
     assert client.get("/api/runs", headers={"x-api-key": "s3cret"}).status_code == 200
     assert client.get("/api/runs?api_key=s3cret").status_code == 200
     assert client.get("/api/runs/nope/events").status_code == 401
+
+
+def test_graph_focus_keeps_connected_hubs_over_isolated_flagged_nodes():
+    from app.analysis.stages import _focus_graph
+
+    isolated = [
+        {"id": f"iso{i}", "label": f"iso{i}", "kind": "endpoint", "severity": "HIGH", "file": "a.py"} for i in range(40)
+    ]
+    hub = {"id": "hub", "label": "hub", "kind": "function", "severity": None, "file": "b.py"}
+    spokes = [{"id": f"s{i}", "label": f"s{i}", "kind": "function", "severity": None, "file": "b.py"} for i in range(6)]
+    edges = [{"id": f"e{i}", "source": "hub", "target": f"s{i}", "kind": "calls"} for i in range(6)]
+    focus = _focus_graph([*isolated, hub, *spokes], edges, limit=20)
+    kept = {node["id"] for node in focus["nodes"]}
+    assert "hub" in kept and {f"s{i}" for i in range(6)} <= kept
+    assert focus["truncated"] is True and len(kept) <= 20
+
+
+def test_minified_bundles_are_skipped_with_a_reason(tmp_path: Path):
+    settings = get_settings()
+    (tmp_path / "app.js").write_text("function a() {\n  return 1;\n}\n" * 400, encoding="utf-8")
+    (tmp_path / "vendor.js").write_text("var a=function(b){return b};" * 400 + "\n", encoding="utf-8")
+    (tmp_path / "lib.min.js").write_text("x=1;\n", encoding="utf-8")
+    texts, skipped = scan_tree(tmp_path, settings)
+    assert list(texts) == ["app.js"]
+    assert {item["path"]: item["reason"] for item in skipped} == {
+        "vendor.js": "minified or generated",
+        "lib.min.js": "minified or generated",
+    }
+
+
+def test_calls_do_not_link_unrelated_code_that_shares_a_name():
+    from app.analysis.stages import build_graph
+
+    settings = get_settings()
+    head = {
+        "svc/main.py": "import time\n\ndef run():\n    sleep(1)\n    helper()\n\ndef helper():\n    return 1\n",
+        "web/utils.js": "export function sleep(ms) { return ms; }\n",
+        "other/helper.py": "def helper():\n    return 2\n",
+        "svc/util.py": "def sleep(x):\n    return x\n",
+    }
+    state = AnalysisState(workspace=".", base=dict(head), head=head)
+    stage_parse(state, settings)
+    stage_diff(state, settings)
+    graph = build_graph(state, settings)
+    calls = {(e["source"].split("::")[-1], e["target"]) for e in graph["edges"] if e["kind"] == "calls"}
+    targets = {t for _s, t in calls}
+    assert "sym:svc/main.py::helper" in targets            # same file wins
+    assert "sym:svc/util.py::sleep" in targets             # same folder, same language
+    assert not any("web/utils.js" in t or "other/helper.py" in t for t in targets)

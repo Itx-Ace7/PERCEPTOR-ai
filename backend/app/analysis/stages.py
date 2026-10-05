@@ -196,13 +196,32 @@ def _index_files(files: list[ParsedFile]) -> dict[str, ParsedFile]:
     return {item.path: item for item in files}
 
 
-def _resolve_call(name: str, file: str, by_name: dict[str, list]) -> str | None:
+def _resolve_call(
+    name: str,
+    file: str,
+    by_name: dict[str, list],
+    reachable: set[str] | None = None,
+    language_of_file: dict[str, str] | None = None,
+) -> str | None:
+    """Find the one function a call most likely means.
+
+    A call can only reach code written in the same language, and in the same file or a file this
+    one imports. Matching on the bare name across a whole repository links unrelated code that
+    merely shares a common name such as `sleep` or `error`, so it is not used any more.
+    """
     candidates = by_name.get(name, [])
     if not candidates:
         return None
+    if language_of_file is not None:
+        mine = language_of_file.get(file)
+        candidates = [item for item in candidates if language_of_file.get(item.file) == mine]
     same = [item for item in candidates if item.file == file]
     if len(same) == 1:
         return same[0].sid
+    if same:
+        return None
+    if reachable is not None:
+        candidates = [item for item in candidates if item.file in reachable]
     if len(candidates) == 1:
         return candidates[0].sid
     return None
@@ -241,6 +260,8 @@ def build_graph(state: AnalysisState, settings: Settings) -> dict:
                 severity=None,
             )
             graph.add_edge(file_id, symbol.sid, kind="contains")
+    languages = {parsed.path: parsed.language for parsed in state.head_files}
+    imported_files: dict[str, set[str]] = defaultdict(set)
     for parsed in state.head_files:
         file_id = f"file:{parsed.path}"
         for imported in parsed.imports:
@@ -248,9 +269,15 @@ def build_graph(state: AnalysisState, settings: Settings) -> dict:
             target = stems.get(stem)
             if target and target != parsed.path:
                 graph.add_edge(file_id, f"file:{target}", kind="imports")
+                imported_files[parsed.path].add(target)
+    for parsed in state.head_files:
+        # Code a file can call: itself, the files it imports, and its own folder.
+        folder = str(Path(parsed.path).parent)
+        reachable = {parsed.path, *imported_files[parsed.path]}
+        reachable |= {other for other in languages if str(Path(other).parent) == folder}
         for symbol in parsed.symbols:
             for callee in symbol.calls:
-                target = _resolve_call(callee, symbol.file, by_name)
+                target = _resolve_call(callee, symbol.file, by_name, reachable, languages)
                 if target and target != symbol.sid:
                     graph.add_edge(symbol.sid, target, kind="calls")
     return _graph_json(graph, settings)
@@ -267,14 +294,26 @@ def _graph_json(graph: nx.DiGraph, settings: Settings) -> dict:
     return {"nodes": focus["nodes"], "edges": focus["edges"], "total_nodes": len(nodes), "truncated": focus["truncated"]}
 
 
+# Share of the graph budget given to the most connected nodes before severity fills the rest.
+HUB_SHARE = 0.5
+
+
 def _focus_graph(nodes: list[dict], edges: list[dict], limit: int) -> dict:
     if len(nodes) <= limit:
         return {"nodes": nodes, "edges": edges, "truncated": False}
     by_id = {node["id"]: node for node in nodes}
+    # Degree = how many calls touch a node. Hubs are what a blast radius is about, and an
+    # isolated node tells the reader little, so connectivity breaks ties after severity.
+    degree: dict[str, int] = defaultdict(int)
+    for edge in edges:
+        if edge.get("kind") == "calls":
+            degree[edge["source"]] += 1
+            degree[edge["target"]] += 1
     ranked = sorted(
         nodes,
         key=lambda node: (
             {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1}.get(node.get("severity") or "", 0),
+            min(degree.get(node["id"], 0), 20),
             1 if node.get("kind") == "endpoint" else 0,
             0 if node.get("kind") == "file" else 1,
             1 if node.get("changed") else 0,
@@ -283,6 +322,14 @@ def _focus_graph(nodes: list[dict], edges: list[dict], limit: int) -> dict:
         reverse=True,
     )
     keep: set[str] = set()
+    # Reserve a share of the budget for the best-connected nodes, so a repository with thousands
+    # of flagged but isolated endpoints still shows its real call structure.
+    hub_budget = int(limit * HUB_SHARE)
+    for node in sorted(nodes, key=lambda item: degree.get(item["id"], 0), reverse=True):
+        if len(keep) >= hub_budget or degree.get(node["id"], 0) < 1:
+            break
+        if node.get("kind") != "file":
+            keep.add(node["id"])
     for node in ranked:
         if len(keep) >= limit:
             break

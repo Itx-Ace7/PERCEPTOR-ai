@@ -73,6 +73,9 @@ class Settings:
         self.function_length_threshold = int(analysis.get("function_length_threshold", 80))
         self.max_files = int(analysis.get("max_files", 5000))
         self.max_file_bytes = int(analysis.get("max_file_bytes", 300000))
+        self.minified_avg_line_chars = int(analysis.get("minified_avg_line_chars", 300))
+        self.minified_min_bytes = int(analysis.get("minified_min_bytes", 4000))
+        self.minified_name_markers = [str(item).lower() for item in analysis.get("minified_name_markers", [".min."])]
         self.read_workers = max(1, int(analysis.get("read_workers", 16)))
         self.read_chunk = max(1, int(analysis.get("read_chunk", 256)))
         self.max_notebook_bytes = int(analysis.get("max_notebook_bytes", self.max_file_bytes))

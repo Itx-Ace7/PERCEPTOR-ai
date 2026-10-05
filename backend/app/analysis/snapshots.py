@@ -142,6 +142,16 @@ def scan_tree(root: Path, settings: Settings) -> tuple[dict[str, str], list[dict
     return texts, sorted(skipped, key=lambda item: item["path"])
 
 
+def is_minified(rel: str, raw: bytes, settings: Settings) -> bool:
+    """Bundled or minified code: very long lines, or a name that says so. Never real source a person edits."""
+    name = Path(rel).name.lower()
+    if any(marker in name for marker in settings.minified_name_markers):
+        return True
+    if len(raw) < settings.minified_min_bytes:
+        return False
+    return len(raw) / max(1, raw.count(b"\n") + 1) > settings.minified_avg_line_chars
+
+
 def _accept(rel: str, size: int, raw: bytes, texts: dict[str, str], skipped: list[dict], settings: Settings) -> None:
     """Classify one file that has been read: keep its text, or record why it is left out."""
     notebook = is_notebook(rel, settings)
@@ -150,6 +160,9 @@ def _accept(rel: str, size: int, raw: bytes, texts: dict[str, str], skipped: lis
         return
     if b"\0" in raw:
         skipped.append({"path": rel, "reason": "binary", "size": size})
+        return
+    if not notebook and is_minified(rel, raw, settings):
+        skipped.append({"path": rel, "reason": "minified or generated", "size": size})
         return
     text = raw.decode("utf-8", errors="replace")
     if notebook:

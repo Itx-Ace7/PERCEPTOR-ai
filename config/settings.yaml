@@ -40,6 +40,12 @@ analysis:
   max_file_bytes: 300000
   read_workers: 16
   read_chunk: 256
+  # Generated or minified code (bundles, *.min.js) is not what a reviewer reads. A file is treated
+  # as minified when its lines are this long on average, or its name says so.
+  minified_avg_line_chars: 300
+  minified_min_bytes: 4000
+  minified_name_markers:
+    - ".min."
   max_notebook_bytes: 8000000
   notebook_extensions:
     - .ipynb
