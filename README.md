@@ -47,6 +47,14 @@ The [Vercel app](https://perceptor-ai-release.vercel.app) is this same interface
 
 The analysis service is still a long-running process: a run clones the repository, keeps a workspace, and can take minutes. It has to be running for the public site to start a review. Local development is unchanged: `scripts\run.ps1` serves the UI on port 3000 and the API on port 8787.
 
+If the live site says the analysis service is not reachable, the API or its tunnel on the host computer has stopped. Bring it back with:
+
+```powershell
+.\scripts\share.ps1
+```
+
+It starts the API, opens a public tunnel (needs [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/), set `CLOUDFLARED` if it is not on `PATH`), points `API_UPSTREAM` on Vercel at that tunnel, and redeploys. It needs the Vercel CLI signed in (`npm install -g vercel`, then `vercel login`). A free tunnel gets a new address on every start, so run it again after a restart. For a site that stays up without this computer, host the API on an always-on server and set `API_UPSTREAM` to its address once.
+
 ## How a run works
 
 ```text
