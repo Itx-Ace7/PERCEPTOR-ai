@@ -90,18 +90,17 @@ These figures describe this fixture and this machine. They are not a general det
 
 ```powershell
 .\scripts\setup.ps1
-
-
 .\scripts\run.ps1
 ```
-
-## 10. developed by TEAM Cryptonix
-- P rahul
-- Sairam S
-- Subha Sree S
-- Shanmathi VK
-- Mitra IK
 
 Then open http://localhost:3000, paste a GitHub repository URL, or upload a zip. Set `OPENROUTER_API_KEY` in `.env` when the model node should take part.
 
 The same interface is deployed at https://perceptor-ai-release.vercel.app. A browser on any device talks only to that site. The site forwards `/api` to the analysis service, so a visitor does not run the API locally. The service itself still has to be running, because a review clones the repository and can take minutes. Set `PERCEPTOR_ALLOW_LOCAL_PATHS=0` on that service so a public request cannot read a folder on the host.
+
+## 10. Developed by Team Cryptonix
+
+- P Rahul
+- Sairam S
+- Subha Sree S
+- Shanmathi VK
+- Mitra IK
